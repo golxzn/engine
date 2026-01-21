@@ -1,0 +1,6 @@
+[submodule "code/third-party/mimalloc"]
+	path = deps/mimalloc
+	url = git@github.com:microsoft/mimalloc.git
+[submodule "code/third-party/glm"]
+	path = deps/glm
+	url = git@github.com:g-truc/glm.git

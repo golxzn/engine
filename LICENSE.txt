@@ -1,0 +1,178 @@
+Restricted Source-Available License (RSAL) — Version 1.2 Copyright (c) 2026
+Ruslan Golovinskii (golxzn). All rights reserved.
+
+Preamble This license makes the software and associated materials (“Library”)
+publicly available under conditions that require visible attribution for
+Commercial Use and strictly prohibit: (a) the use of the Library for training,
+fine-tuning, evaluation, or dataset generation for artificial-intelligence or
+machine-learning systems; and (b) the use of the Library within, by, or as part
+of any Large Language Model, Neural Network, or other AI system, whether for
+training or inference.
+
+This is a source-available license and is NOT an Open Source Initiative (OSI)
+approved open-source license.
+
+---------------------------------------------------------------------------
+Definitions
+---------------------------------------------------------------------------
+
+1. “Library” The original software, source code, binaries, assets, examples,
+tests, and documentation distributed under this license.
+
+2. “Commercial Use” Using, copying, modifying, incorporating, or distributing
+the Library (or any derivative) in any product, service, or offering provided
+for a fee, for commercial advantage, in connection with a for-profit entity, or
+otherwise for monetary or strategic business benefit.
+
+3. “Model” Any computational system that uses statistical, probabilistic,
+neural, connectionist, or machine-learned techniques to produce outputs,
+including but not limited to artificial intelligence systems, machine-learning
+systems, neural networks, and large language models.
+
+4. “Large Language Model” (LLM) Any Model designed to process, generate,
+transform, or reason over natural language or code using neural-network-based
+architectures, including but not limited to transformer-based or foundation
+models.
+
+5. “Neural Network” Any Model composed of interconnected nodes, layers, or
+parameters whose behavior is determined by learned or adjusted weights,
+regardless of size, architecture, or training method.
+
+6. “Training” “Training” means any deliberate process that uses the Library (in
+whole or in part) — or any material derived substantially from the Library — to
+create, tune, fine-tune, validate, benchmark, or otherwise influence the
+parameters, weights, architecture, or behavior of any Model.
+
+   Training includes, without limitation: a) direct ingestion of Library files,
+   text, content, or artifacts; b) inclusion in datasets used for Training; c)
+   synthetic regeneration based on the Library for the purpose of Model
+   development or evaluation; d) automated analysis that stores or transforms
+   the Library for the purpose of producing training signals or
+   training-related metadata.
+
+   Explicit Exclusions (NOT Training): – transient runtime execution strictly
+   for normal non-AI software operation; – compilation or static analysis that
+   does not create AI training artifacts; – testing that does not influence or
+   generate Model parameters or behavior.
+
+7. “Model Usage” Any use of the Library by, within, or in conjunction with a
+Model, including but not limited to: a) embedding the Library into a Model’s
+runtime, inference pipeline, or execution environment; b) using the Library to
+generate outputs consumed by a Model; c) invoking the Library as a tool,
+plugin, function, or callable component of a Model-driven system; d) exposing
+the Library’s functionality through an LLM-, NN-, or AI-controlled interface.
+
+8. “Attribution Display” A clearly visible, human-legible notice containing the
+Library name and rights holder, displayed in one or more of: product About
+screen, main UI, splash screen, credit screen, documentation, printed
+packaging, or the primary product website.
+
+   Example: “Includes [LIBRARY NAME] — © Ruslan Golovinskii (golxzn). Used
+   under license.”
+
+---------------------------------------------------------------------------
+Grant of Rights
+---------------------------------------------------------------------------
+
+Subject to full compliance with this license, Licensor grants You a worldwide,
+non-exclusive, non-transferable, revocable license to:
+
+a) use, reproduce, and modify the Library for personal, academic, or internal
+business use; b) distribute the Library or derivative works in source or binary
+form, provided that all conditions in “Conditions” are fully satisfied.
+
+No rights are granted for Training or Model Usage.
+
+---------------------------------------------------------------------------
+Conditions
+---------------------------------------------------------------------------
+
+1. Attribution for Commercial Use a) Any Commercial Use requires an Attribution
+Display in a reasonably prominent location appropriate to the product form
+factor. b) If the product lacks a user interface, attribution must appear in
+documentation and the primary product website. c) Distributed binaries or
+installers must include attribution in bundled materials or an About screen.
+
+2. Prohibition on Training a) You shall not engage in Training using the
+Library, directly or indirectly. b) You shall not permit or enable any third
+party to use the Library for Training. c) Redistribution must preserve an
+enforceable Training prohibition. d) Ambiguous use shall be presumed to be
+Training unless explicitly licensed.
+
+3. Prohibition on LLM and Neural Network Usage a) You shall not use the Library
+for Model Usage. b) The Library shall not be embedded in, invoked by,
+controlled by, or exposed through any LLM, Neural Network, or other Model. c)
+You shall not provide the Library as a tool, extension, function, capability,
+or callable interface to any Model. d) Redistribution must preserve an
+enforceable prohibition on Model Usage identical in scope to this clause.
+
+4. Redistribution and Derivatives Redistribution of the Library or derivatives
+is permitted only if: a) all copyright notices, this license, and any NOTICE
+file are preserved; b) each copy includes a clear statement that Training and
+Model Usage are strictly prohibited; c) Commercial Use by downstream recipients
+complies with Attribution rules.
+
+5. No Conflicting Sublicenses You may not offer any sublicense or agreement
+that modifies, weakens, or conflicts with this license.
+
+6. Patent Rights No patent rights are granted unless explicitly stated in a
+separate, signed agreement with the Licensor.
+
+7. Trademark No trademark rights are granted except as required for Attribution
+Display.
+
+---------------------------------------------------------------------------
+Compliance & Verification
+---------------------------------------------------------------------------
+
+For Commercial Use, Licensor may request written certification of compliance
+with Attribution, Training, and Model Usage prohibitions within 20 business
+days. Reasonable evidence may be required under NDA.
+
+---------------------------------------------------------------------------
+Termination
+---------------------------------------------------------------------------
+
+This license terminates automatically if You materially breach the Attribution,
+Training, or Model Usage clauses and fail to cure within 30 days of written
+notice. Immediate injunctive relief may be sought to prevent irreparable harm.
+
+Upon termination, You must cease all use, distribution, and possession of the
+Library and destroy all copies in Your control.
+
+---------------------------------------------------------------------------
+Enforcement & Remedies
+---------------------------------------------------------------------------
+
+Licensor may seek injunctive relief, damages, statutory damages where
+available, and recovery of reasonable legal fees.
+
+---------------------------------------------------------------------------
+Disclaimer of Warranty
+---------------------------------------------------------------------------
+
+THE LIBRARY IS PROVIDED “AS IS”, WITHOUT WARRANTIES OF ANY KIND.
+
+---------------------------------------------------------------------------
+Limitation of Liability
+---------------------------------------------------------------------------
+
+IN NO EVENT SHALL LICENSOR BE LIABLE FOR ANY INDIRECT OR CONSEQUENTIAL DAMAGES.
+
+---------------------------------------------------------------------------
+Commercial Exceptions
+---------------------------------------------------------------------------
+
+Licensor may offer separate commercial licenses that permit Training or Model
+Usage, modify Attribution, or grant additional rights. Contact: [CONTACT
+INFORMATION]
+
+---------------------------------------------------------------------------
+Miscellaneous
+---------------------------------------------------------------------------
+
+– Governing Law: [JURISDICTION] – Severability: unenforceable provisions
+replaced to preserve intent – Entire Agreement: this license is the entire
+agreement
+
+[END OF LICENSE]

@@ -1,0 +1,12 @@
+root = true
+
+[*.*pp]
+end_of_line = lf
+indent_style = space
+indent_width = 2
+
+[*.(txt, cmake)]
+end_of_line = lf
+indent_style = space
+indent_width = 2
+

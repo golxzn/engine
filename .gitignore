@@ -1,0 +1,14 @@
+.vs
+.vim
+.nvim
+.idea
+.cache
+.vscode
+
+build/
+out/
+bin/*
+!bin/assets
+
+compile_commands.json
+todo
