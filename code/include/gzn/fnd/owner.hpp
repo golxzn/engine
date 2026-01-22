@@ -128,7 +128,7 @@ public:
   using pointer         = std::add_pointer_t<T>;
   using const_pointer   = std::add_pointer_t<std::add_const_t<T>>;
 
-  constexpr ref(std::nullptr_t null = nullptr) noexcept {}
+  constexpr ref(std::nullptr_t = nullptr) noexcept {}
 
   constexpr explicit ref(owner_base<value_type> &owner) noexcept
     : m_data{ owner.get_value_with_status() } {}
@@ -136,7 +136,7 @@ public:
   constexpr ~ref() { unlink(); }
 
   constexpr ref(ref const &other)
-    : m_data{ other.m_data.get_value_with_status() } {}
+    : m_data{ other.m_data.acquire_copy() } {}
 
   constexpr ref(ref &&other) noexcept
     : m_data{ std::exchange(other.m_data, {}) } {}
@@ -264,7 +264,7 @@ public:
   using const_pointer = std::add_pointer_t<std::add_const_t<T>>;
   using storage_type  = std::array<std::byte, sizeof(T)>;
 
-  constexpr stack_owner(std::nullptr_t n = nullptr) noexcept
+  constexpr stack_owner(std::nullptr_t = nullptr) noexcept
     : base_class{ static_cast<base_allocator *>(nullptr), nullptr } {}
 
   constexpr stack_owner(stack_owner const &) = delete;
