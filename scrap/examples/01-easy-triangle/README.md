@@ -1,4 +1,4 @@
-# [EX00] Triangle
+# \[EX00]\[EASY] Triangle
 
 ## Overview
 

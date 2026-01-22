@@ -6,6 +6,7 @@
 #include <utility>
 
 #include "gzn/fnd/assert.hpp"
+#include "gzn/fnd/definitions.hpp"
 
 namespace gzn::fnd::util {
 
@@ -108,6 +109,12 @@ inline constexpr auto size(T const &range) noexcept -> SizeType {
   } else {
     gzn_do_static_assert("This type doesn't support util::size");
   }
+}
+
+template<class T, class ...Ts>
+  requires(std::convertible_to<T, Ts> && ...)
+gzn_inline constexpr auto any_from(T &&target, Ts &&...values) noexcept {
+  return ((target == values) || ...);
 }
 
 } // namespace gzn::fnd::util
