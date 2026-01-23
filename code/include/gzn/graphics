@@ -1,4 +1,6 @@
 #pragma once
 
 // clang-format off
+#include <gzn/gfx/context.hpp>
+#include <gzn/gfx/commands.hpp>
 // clang-format on

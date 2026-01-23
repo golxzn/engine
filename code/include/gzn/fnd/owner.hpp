@@ -11,11 +11,6 @@
 
 namespace gzn::fnd {
 
-/* [IDEA]
- * Holding the shared flag which is located on ??? and the owner has rights to
- * set it, while references could only read this flag.
- */
-
 using owner_alive_state = ref_counted_storage<std::atomic_bool>;
 
 template<class T>

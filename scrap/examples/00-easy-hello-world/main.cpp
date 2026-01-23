@@ -11,11 +11,11 @@ int main() {
   };
   if (!view.is_alive()) { return EXIT_FAILURE; }
 
-  auto render{ gfx::render::make<fnd::stack_owner>(
-    alloc, { .backend = gfx::backend_type::opengl_es }
-  ) };
+  auto render{ gfx::context::make<fnd::stack_owner>(alloc, gfx::context_info{
+    .backend = gfx::backend_type::opengl,
+    .make_surface{ view->get_surface_proxy_generator(alloc) }
+  }) };
   if (!render.is_alive()) { return EXIT_FAILURE; }
-  fnd::ref render_ref{ render };
 
   gfx::text_draw_info const hello_world{
     .text{ "Hello, World!" },
@@ -34,10 +34,10 @@ int main() {
       }
     }
 
-    gfx::cmd::start(render_ref, 0x27'27'2E'FF);
-    gfx::cmd::draw(render_ref, hello_world);
-    gfx::cmd::submit(render_ref);
+    gfx::cmd::start(*render, 0x27'27'2E'FF);
+    gfx::cmd::draw(*render, hello_world);
+    gfx::cmd::submit(*render);
 
-    view->swap_buffers();
+    gfx::cmd::present(*render);
   }
 }

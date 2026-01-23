@@ -91,7 +91,7 @@ class move_only_func<Signature> final
   }
 
 public:
-  move_only_func(std::nullptr_t n = nullptr) noexcept {}
+  move_only_func(std::nullptr_t = nullptr) noexcept {}
 
   template<class F>
     requires(
@@ -243,7 +243,7 @@ class copyable_func<Signature> final
   }
 
 public:
-  constexpr copyable_func(std::nullptr_t n = nullptr) noexcept {}
+  constexpr copyable_func(std::nullptr_t = nullptr) noexcept {}
 
   template<class F>
     requires(

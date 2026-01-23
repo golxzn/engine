@@ -20,16 +20,11 @@ target_link_libraries(gzn_deps INTERFACE
 # >-------------------------- | X11 |----------------------------< #
 
 find_package(X11)
-target_link_libraries(gzn_deps INTERFACE ${X11_LIBRARIES})
-target_include_directories(gzn_deps INTERFACE ${X11_INCLUDE_DIR})
-
-# >-------------------------| wayland |--------------------------< #
-
-# find_package(Wayland)
-# target_link_libraries(gzn_deps INTERFACE
-#   Wayland::Client
-#   Wayland::Cursor
-# )
+if (X11_FOUND)
+  target_link_libraries(gzn_deps INTERFACE ${X11_LIBRARIES})
+  target_include_directories(gzn_deps INTERFACE ${X11_INCLUDE_DIR})
+  target_compile_definitions(gzn_deps INTERFACE GZN_VIEW_BACKEND_X11)
+endif()
 
 # >---------------------------| GLM |----------------------------< #
 
