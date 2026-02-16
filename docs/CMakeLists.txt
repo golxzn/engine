@@ -2,7 +2,7 @@
 
 find_package(Doxygen REQUIRED doxygen)
 if (NOT TARGET Doxygen::doxygen)
-	message(WARNING "Doxygen not found.")
+	gzn_msg(WARNING "Doxygen not found.")
 	return()
 endif()
 

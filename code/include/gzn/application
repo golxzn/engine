@@ -1,5 +1,6 @@
 #pragma once
 
 // clang-format off
+#include "gzn/app/event.hpp"
 #include "gzn/app/view.hpp"
 // clang-format on

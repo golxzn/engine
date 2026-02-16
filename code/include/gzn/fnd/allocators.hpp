@@ -6,6 +6,7 @@
 #include <utility>
 
 #include "gzn/fnd/assert.hpp"
+#include "gzn/fnd/definitions.hpp"
 
 namespace gzn::fnd {
 
@@ -28,18 +29,37 @@ constexpr auto memory_align(u32 const size, u32 const alignment) noexcept
 
 template<class T>
 [[nodiscard]]
-inline auto alloc(util::allocator_type auto &allocator) -> void * {
-  return allocator.allocate(sizeof(T), alignof(T), 0u, 0u);
+gzn_inline auto alloc(util::allocator_type auto &allocator) -> void * {
+  return static_cast<T *>(allocator.allocate(sizeof(T), alignof(T), 0u, 0u));
 }
 
 template<class T>
-inline void dealloc(util::allocator_type auto &allocator, T *ptr) {
+gzn_inline void dealloc(util::allocator_type auto &allocator, T *ptr) {
   return allocator.deallocate(static_cast<void *>(ptr), sizeof(T), alignof(T));
+}
+
+template<class T>
+[[nodiscard]]
+gzn_inline auto alloc(util::allocator_type auto &allocator, usize const count)
+  -> void * {
+  usize const bytes_count{ sizeof(T) * count };
+  return static_cast<T *>(allocator.allocate(bytes_count, alignof(T), 0u, 0u));
+}
+
+template<class T>
+gzn_inline void dealloc(
+  util::allocator_type auto &allocator,
+  T                         *ptr,
+  usize const                count
+) {
+  return allocator.deallocate(
+    static_cast<void *>(ptr), sizeof(T) * count, alignof(T)
+  );
 }
 
 template<class T, class... Args>
   requires std::constructible_from<T, Args &&...>
-[[nodiscard]] inline auto construct(
+[[nodiscard]] gzn_inline auto construct(
   util::allocator_type auto &allocator,
   Args &&...args
 ) noexcept(std::is_nothrow_constructible_v<T, Args &&...>)
@@ -51,7 +71,7 @@ template<class T, class... Args>
 }
 
 template<class T>
-inline void destroy(util::allocator_type auto &allocator, T *ptr) noexcept(
+gzn_inline void destroy(util::allocator_type auto &allocator, T *ptr) noexcept(
   std::is_nothrow_destructible_v<T>
 ) {
   gzn_assertion(ptr != nullptr, "Attempt to destroy nullptr");

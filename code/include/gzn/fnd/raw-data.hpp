@@ -49,6 +49,11 @@ public:
   }
 
   [[nodiscard]]
+  constexpr auto bytes_count() const noexcept -> size_type {
+    return m_stride * m_size;
+  }
+
+  [[nodiscard]]
   constexpr auto is_same_as(raw_data const other) const noexcept -> bool {
     return m_data == other.m_data && m_size == other.m_size &&
            m_stride == other.m_stride;

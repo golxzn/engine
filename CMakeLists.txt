@@ -9,7 +9,7 @@ project(gzn-engine
 	VERSION      0.1.0
 	DESCRIPTION  "some kinda engine"
 	HOMEPAGE_URL https://golxzn/projects/gzn-engine.html
-	LANGUAGES    CXX
+  LANGUAGES    C CXX
 )
 
 include(GNUInstallDirs)

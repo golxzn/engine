@@ -7,7 +7,7 @@ foreach(example IN LISTS example_directories)
     continue()
   endif()
 
-  message(STATUS "Creating ${example} example")
+  gzn_msg(STATUS "Creating ${example} example")
   file(GLOB_RECURSE src CONFIGURE_DEPENDS ${current_dir}/${example}/*.*pp)
   add_executable(${example} ${src})
   target_link_libraries(${example} PUBLIC gzn::engine)

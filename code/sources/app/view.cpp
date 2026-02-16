@@ -2,6 +2,8 @@
 
 #if defined(GZN_VIEW_BACKEND_X11)
 #  include "./backends/view/x11.inl"
+#elif defined(GZN_VIEW_BACKEND_WAYLAND)
+#  include "./backends/view/wayland.inl"
 #else
 #  error "No suitable backend for gzn::app::view was choosen"
 #endif
@@ -25,6 +27,14 @@ auto view::operator=(view &&other) noexcept -> view & {
 
 auto view::take_next_event(event &ev) -> bool {
   return backends::view::take_event(id, ev);
+}
+
+auto view::get_size() const noexcept -> glm::u32vec2 {
+  return backends::view::get_size(id);
+}
+
+auto view::get_native_handle() const noexcept -> native_view_handle {
+  return backends::view::get_native_handle(id);
 }
 
 auto view::make_surface_proxy(backend_id id, gfx::backend_type type)

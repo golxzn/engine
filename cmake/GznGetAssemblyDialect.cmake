@@ -3,7 +3,7 @@ function(gzn_get_assembly_dialect OUTVAR)
 	enable_language(ASM)
 
 	if(NOT OUTVAR)
-		message(FATAL_ERROR "gzn_get_assembly_dialect requires one OUT parameter")
+		gzn_msg(FATAL_ERROR "gzn_get_assembly_dialect requires one OUT parameter")
 	endif()
 
 	set(_base "${CMAKE_BINARY_DIR}/CMakeGznAsmDialect")

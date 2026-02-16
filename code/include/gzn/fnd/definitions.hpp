@@ -7,3 +7,9 @@
 #else
 #  define gzn_inline inline
 #endif
+
+#if defined(GZN_DEBUG)
+#  define gzn_if_debug(line) line
+#else
+#  define gzn_if_debug(line)
+#endif // defined(GZN_DEBUG)

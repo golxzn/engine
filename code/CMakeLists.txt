@@ -12,9 +12,14 @@ add_library(${lib_target} ${gzn_header_files} ${gzn_source_files})
 add_library(gzn::engine ALIAS ${lib_target})
 
 if (MSVC)
-  target_compile_options(${lib_target} PRIVATE /W4)
+  target_compile_definitions(${lib_target} PRIVATE _HAS_EXCEPTIONS=0)
+  target_compile_options(${lib_target} PRIVATE
+    /EHa- /EHs- /EHc- /W4 /permissive-
+  )
 else()
-  target_compile_options(${lib_target} PRIVATE -Wall -Wextra -Wpedantic)
+  target_compile_options(${lib_target} PRIVATE
+    -Wall -Wextra -Wpedantic -fno-exceptions
+  )
 endif()
 
 target_include_directories(${lib_target} PUBLIC
@@ -31,7 +36,22 @@ target_compile_definitions(${lib_target} PUBLIC
   "GZN_PLATFORM_$<UPPER_CASE:$<PLATFORM_ID>>"
   "GZN_PROCESSOR_$<UPPER_CASE:${CMAKE_SYSTEM_PROCESSOR}>"
   "GZN_ASM_DIALECT_${asm_dialect}"
+  "GZN_GFX_BACKEND=${GZN_GFX_BACKEND}"
 )
+
+if(GZN_GFX_BACKEND MATCHES "any")
+  get_property(backends CACHE GZN_GFX_BACKEND PROPERTY STRINGS)
+  foreach (backend IN LISTS backends)
+    target_compile_definitions(${lib_target} PUBLIC
+      "GZN_GFX_BACKEND_$<UPPER_CASE:${backend}>"
+    )
+  endforeach()
+else()
+  target_compile_definitions(${lib_target} PUBLIC
+    "GZN_GFX_BACKEND_$<UPPER_CASE:${GZN_GFX_BACKEND}>"
+  )
+endif ()
+
 if(NOT GZN_DISABLE_ASSERTIONS)
   target_compile_definitions(${lib_target} PUBLIC
   "$<$<CONFIG:Debug>:GZN_ASSERTIONS>"

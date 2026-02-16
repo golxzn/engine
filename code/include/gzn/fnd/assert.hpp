@@ -1,5 +1,6 @@
 #pragma once
 
+#include "gzn/fnd/definitions.hpp"
 #include "gzn/fnd/types.hpp"
 
 namespace gzn::fnd {
@@ -95,5 +96,7 @@ void GZN_DEBUG_BREAK(); // User must define this externally.
 #error GZN_DEBUG_BREAK is already defined yet you would like to override it. Please ensure no other headers are already defining GZN_DEBUG_BREAK before this header (config.h) is included
 #  endif
 #endif
+
+gzn_inline void breakpoint() { GZN_DEBUG_BREAK(); }
 
 } // namespace gzn::fnd

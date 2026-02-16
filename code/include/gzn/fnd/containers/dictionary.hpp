@@ -6,6 +6,8 @@
 
 namespace gzn::fnd {
 
+// auto const location{ hash(key) & (count - 1) };
+
 template<class Key, class Value>
 struct record {
   Key   key{};

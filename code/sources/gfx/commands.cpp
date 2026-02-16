@@ -1,27 +1,73 @@
 #include "gzn/gfx/commands.hpp"
 
+#include "./backends/cmd/metal.inl"
+#include "./backends/cmd/opengl.inl"
+#include "./backends/cmd/opengl_es2.inl"
+#include "./backends/cmd/vulkan.inl"
 #include "gzn/gfx/context.hpp"
 
 namespace gzn::gfx {
 
-void cmd::start(context &ctx, u32 clear_color) {
-  /// @todo IMPLEMENTATION
+namespace {
+
+struct cache {
+  void (*clear)(context_data_view, cmd_clear const &){ nullptr };
+  void (*submit)(context_data_view){ nullptr };
+};
+
+template<class backend>
+constexpr auto make_cache_for() noexcept {
+  return cache{
+    .clear  = &backend::clear,
+    .submit = &backend::submit,
+  };
 }
 
-void cmd::draw(context &ctx, text_draw_info info) {
-  /// @todo IMPLEMENTATION
+#if defined(GZN_GFX_BACKEND_METAL)
+cache inline constexpr metal{ make_cache_for<backends::metal>() };
+#endif // defined(GZN_GFX_BACKEND_METAL)
+
+#if defined(GZN_GFX_BACKEND_VULKAN)
+cache inline constexpr vulkan{ make_cache_for<backends::vulkan>() };
+#endif // defined(GZN_GFX_BACKEND_VULKAN)
+
+#if defined(GZN_GFX_BACKEND_OPENGL)
+cache inline constexpr opengl{ make_cache_for<backends::opengl>() };
+#endif // defined(GZN_GFX_BACKEND_OPENGL)
+
+#if defined(GZN_GFX_BACKEND_OPENGL_ES2)
+cache inline constexpr opengl_es2{ make_cache_for<backends::opengl_es2>() };
+#endif // defined(GZN_GFX_BACKEND_OPENGL_ES2)
+
+cache const *_current_backend{
+#if !defined(GZN_GFX_BACKEND_ANY)
+  &GZN_GFX_BACKEND
+#endif // !defined(GZN_GFX_BACKEND_ANY)
+};
+
+} // namespace
+
+void cmd::setup_for(context &ctx) {
+#if defined(GZN_GFX_BACKEND_ANY)
+  switch (ctx.m.backend) {
+    case backend_type::metal     : _current_backend = &metal; break;
+    case backend_type::vulkan    : _current_backend = &vulkan; break;
+    case backend_type::opengl    : _current_backend = &opengl; break;
+    case backend_type::opengl_es2: _current_backend = &opengl_es2; break;
+
+    default                      : std::unreachable();
+  }
+#endif // defined(GZN_GFX_BACKEND_ANY)
 }
 
-void cmd::draw(context &ctx, filled_rect_draw_info info) {
-  /// @todo IMPLEMENTATION
+void cmd::start(context &ctx) {}
+
+void cmd::clear(context &ctx, cmd_clear const &clr) {
+  _current_backend->clear(ctx.data(), clr);
 }
 
-void cmd::submit(context &ctx) {
-  /// @todo IMPLEMENTATION
-}
+void cmd::submit(context &ctx) { _current_backend->submit(ctx.data()); }
 
-void cmd::present(context &ctx) {
-  ctx.m.surface.present(ctx);
-}
+void cmd::present(context &ctx) { ctx.present(); }
 
 } // namespace gzn::gfx

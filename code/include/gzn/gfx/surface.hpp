@@ -2,22 +2,23 @@
 
 #include <glm/vec2.hpp>
 
-#include "gzn/fnd/owner.hpp"
+#include "gzn/fnd/func.hpp"
 
 namespace gzn::gfx {
 
-class context;
-enum class backend_type;
+class context_data_view;
+
+using surface_handle = void *;
 
 struct surface_proxy {
   template<class T>
   using func = fnd::move_only_func<T>;
 
-  func<auto(context &)->bool> setup{};
-  func<void(context &)>       destroy{};
-  func<void(context &)>       present{};
-
-  func<auto()->glm::u32vec2> get_size{};
+  func<auto(context_data_view)->bool> setup{};
+  func<void(context_data_view)>       destroy{};
+  func<void(context_data_view)>       present{};
+  func<auto()->glm::u32vec2>          get_size{};
+  func<auto()->surface_handle>        get_handle{};
 
   [[nodiscard]]
   constexpr auto valid() const noexcept {
@@ -25,7 +26,6 @@ struct surface_proxy {
   }
 };
 
-using surface_creation_func =
-  fnd::move_only_func<auto(gfx::backend_type)->gfx::surface_proxy>;
+using surface_builder_func = fnd::move_only_func<auto()->gfx::surface_proxy>;
 
 } // namespace gzn::gfx

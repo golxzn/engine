@@ -10,6 +10,10 @@
 
 namespace gzn::fnd::util {
 
+template<class... Ts>
+struct overloaded : Ts... {
+  using Ts::operator()...;
+};
 
 template<class T>
 concept iterator_type = requires(std::remove_cvref_t<T> it) {
@@ -111,7 +115,7 @@ inline constexpr auto size(T const &range) noexcept -> SizeType {
   }
 }
 
-template<class T, class ...Ts>
+template<class T, class... Ts>
   requires(std::convertible_to<T, Ts> && ...)
 gzn_inline constexpr auto any_from(T &&target, Ts &&...values) noexcept {
   return ((target == values) || ...);

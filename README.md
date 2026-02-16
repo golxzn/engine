@@ -3,7 +3,7 @@
 
 # gzn::engine
 
-> Over-engineered, hard-to-use, ugly game engine to enhance absurd
+> \[over-engineered, hard-to-use, ugly game engine to enhance absurd]
 
 ![C++23][cpp-badge]
 ![CMake][cmake-badge]

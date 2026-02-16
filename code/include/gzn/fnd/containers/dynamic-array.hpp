@@ -40,7 +40,7 @@ public:
 
   using iterator          = pointer;
   using const_iterator    = const_pointer;
-  using size_type         = u64;
+  using size_type         = usize;
 
   using allocator_type    = Allocator;
   using allocator_pointer = std::add_pointer_t<Allocator>;

@@ -1,8 +1,14 @@
 #include <array>
 
-#include <gzn/core/view.hpp>
-#include <gzn/fnd/owner.hpp>
-#include <gzn/gfx.hpp>
+#include <glm/mat4x4.hpp>
+#include <glm/vec3.hpp>
+#include <glm/vec4.hpp>
+
+// clang-format off
+#include <gzn/foundation>
+#include <gzn/graphics>
+#include <gzn/application>
+// clang-format on
 
 constexpr auto vertex_shader{ R"glsl(#version 400
 
@@ -28,131 +34,108 @@ void main() {
 }
 )glsl" };
 
-union float3 {
-  struct {
-    float x, y, z;
-  };
-
-  std::array<float, 3> elements{};
-};
-
-union float4 {
-  struct {
-    float x, y, z, w;
-  };
-
-  std::array<float, 4> elements{};
-};
-
-union mat4 {
-  struct {
-    float a00, a01, a02, a03;
-    float a10, a11, a12, a13;
-    float a20, a21, a22, a23;
-    float a30, a31, a32, a33;
-  };
-
-  std::array<float, 16> elements{};
-};
-
 struct vertex {
-  float3 pos{};
-  float4 col{};
+  glm::vec3 pos{};
+  glm::vec4 col{};
 };
 
 int main() {
   using namespace gzn;
+  using namespace gzn::fnd::name_literals;
 
   // clang-format off
-  expected view{ app::view::make({
-      .title{ "Triangle test" },
-      .size{ 1940u, 1080u }
+  fnd::stack_arena_allocator<256> view_storage{};
+  auto view{ app::view::make<fnd::stack_owner>(view_storage, {
+    .title{ "Triangle test" },
+    .size{ 1940u, 1080u }
   }) };
   // clang-format on
-  if (!view.has_value()) {
+
+  if (!view.is_alive()) {
     // logging error
+    return EXIT_FAILURE;
   }
 
-  fnd::stack_arena_allocator<256> view_storage{};
-  fnd::stack_owner result{ view_storage, std::move(view).value() };
-
-  // fnd::chunk_allocator<512> gfx_storage{};
   fnd::base_allocator gfx_storage{};
-  fnd::stack_owner    ctx{ gfx::context::make(
-    gfx_storage,
-    {
-         .backend = gfx::backend::any,
-         .view    = fnd::ref{ view },
-    }
-  ) };
+  // clang-format off
+  auto constexpr gfx_backend{ gfx::backend_type::vulkan };
+  auto ctx{ gfx::context::make<fnd::stack_owner>(gfx_storage, {
+      .backend = gfx_backend,
+      .surface_builder{
+        view->get_surface_proxy_builder(gfx_storage, gfx_backend)
+      }
+  }) };
+  gfx::cmd::setup_for(*ctx);
 
-  auto const triangle{
-    gfx::buffer::make(
-      ctx,
-      { .name{ "triangle"_name },
-        .usage  = gfx::shader::type::vertex,
-        .memory = gfx::buffer::memory::gpu,
-        .initial_data{
-          vertex{ .pos{ 0.0f, -0.5f, 0.0f },
-                  .color{ 1.0f, 0.0f, 0.0f, 1.0f } },
-          vertex{ .pos{ 0.5f, 0.5f, 0.0f }, .color{ 0.0f, 1.0f, 0.0f, 1.0f } },
-          vertex{ .pos{ -0.5f, 0.5f, 0.0f },
-                  .color{ 0.0f, 0.0f, 1.0f, 1.0f } },
-        } }
-    )
-  };
-  auto mvp_buffer{ gfx::buffer::make(
-    {
-      .name{ "mvp"_name },
-      .size   = sizeof(mat4),
-      .usage  = gfx::shader::type::vertex,
-      .memory = gfx::buffer::memory::gpu_cpu,
+  auto const triangle{ gfx::buffer::make(ctx, {
+    .name{ "triangle"_name },
+    .usage  = gfx::shader::type::vertex,
+    .memory = gfx::buffer::memory::gpu,
+    .bindings{
+    // .index = auto enumerate (-1)
+      { .stride = sizeof(vertex), .rate = gfx::rate::per_vertex }
+    },
+    .description{
+    // .location = auto enumerate (-1)
+      { .binding = 0, .format = gfx::format::rgb_f32, .offset = offsetof(vertex, pos) }
+      { .binding = 0, .format = gfx::format::rgb_f32, .offset = offsetof(vertex, pos) }
+    },
+    .initial_data{
+      vertex{ .pos{  0.0f, -0.5f, 0.0f }, .col{ 1.0f, 0.0f, 0.0f, 1.0f } },
+      vertex{ .pos{  0.5f,  0.5f, 0.0f }, .col{ 0.0f, 1.0f, 0.0f, 1.0f } },
+      vertex{ .pos{ -0.5f,  0.5f, 0.0f }, .col{ 0.0f, 0.0f, 1.0f, 1.0f } },
     }
-  ) };
-  auto mvp{ gfx::buffer_view<mat4>::make({ .buffer = mvp_buffer }) };
-  mvp = mat4{
-    .elements{
-              1.0f, 0.0f,
-              0.0f, 0.0f,
-              0.0f, 1.0f,
-              0.0f, 0.0f,
-              0.0f, 0.0f,
-              1.0f, 0.0f,
-              0.0f, 0.0f,
-              0.0f, 1.0f,
-              }
+  }) };
+
+  auto mvp_buffer{ gfx::buffer::make(ctx, {
+    .name{ "mvp"_name },
+    .size   = sizeof(glm::mat4),
+    .usage  = gfx::shader::type::vertex,
+    .memory = gfx::buffer::memory::gpu_cpu,
+  }) };
+
+  auto mvp{ gfx::buffer_view<glm::mat4>::make({
+    .buffer = mvp_buffer
+  }) };
+  mvp = glm::mat4{
+    1.0f, 0.0f, 0.0f, 0.0f,
+    0.0f, 1.0f, 0.0f, 0.0f,
+    0.0f, 0.0f, 1.0f, 0.0f,
+    0.0f, 0.0f, 0.0f, 1.0f,
   };
 
-  auto const pipeline{
-    gzn::pipeline::make(
-      { .name{ "primitive"_name },
-                        .shaders{ { .type  = gfx::shader::type::vertex,
-                    .data  = vertex_shader,
-                    .flags = gfx::shader::flags::compile },
-                  { .type  = gfx::shader::type::fragment,
-                    .data  = fragment_shader,
-                    .flags = gfx::shader::flags::compile } },
-                        .bindings{
-          { .byte_stride = sizeof(vertex),
-            .atributes{
-              { .byte_offset = 0, .format = gfx::format::rgb32_float },
-              { .byte_offset = 12, .format = gfx::format::rgba32_float },
-            } } },
-                        .constants{},
-                        .uniform_binding_groups{
-          gfx::binding::group::make_from_buffer(mvp_buffer) } }
-    )
-  };
+  auto const pipeline{ gzn::pipeline::make(ctx, {
+    .name{ "primitive"_name },
+    .shaders{
+      { .type = gfx::shader::type::vertex,   .data = vertex_shader,   .flags = gfx::shader::flags::compile },
+      { .type = gfx::shader::type::fragment, .data = fragment_shader, .flags = gfx::shader::flags::compile }
+    },
+    .bindings{
+      {
+        .byte_stride = sizeof(vertex),
+        .atributes{
+          { .byte_offset = 0, .format = gfx::format::rgb32_float },
+          { .byte_offset = 12, .format = gfx::format::rgba32_float },
+        }
+      }
+    },
+    .constants{},
+    .uniform_binding_groups{
+      gfx::binding::group::make_from_buffer(mvp_buffer)
+    }
+  }) };
+  // clang-format on
 
   while (true) {
-    {
-      auto scoped{ ctx.begin_scoped() }; // initiate context::begin()
-      gfx::cmd::use(pipeline);
-      gfx::cmd::push(mvp); // or mvp_buffer
-      gfx::cmd::bind(triangle);
-      gfx::cmd::draw({ .vertex_count = 3 });
-    }
+    gfx::cmd::clear(ctx, {});
 
-    ctx.swap_buffers();
+    gfx::cmd::start(ctx);
+      gfx::cmd::use(ctx, pipeline);
+      gfx::cmd::push(ctx, mvp); // or mvp_buffer
+      gfx::cmd::bind(ctx, triangle);
+      gfx::cmd::draw(ctx, { .vertex_count = 3 });
+    gfx::cmd::submit(ctx);
+
+    gfx::cmd::present(cmd);
   }
 }

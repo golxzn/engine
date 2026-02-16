@@ -220,7 +220,7 @@ struct vtable final {
       .copy                 = nop_functor_manager::copy,
       .destroy              = nop_functor_manager::destroy,
       .destructive_move     = nop_functor_manager::destructive_move,
-      .is_noexcept_copyable = false
+      .is_noexcept_copyable = false,
     };
     return &_static_vtable;
   }
