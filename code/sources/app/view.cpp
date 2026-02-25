@@ -37,6 +37,10 @@ auto view::get_native_handle() const noexcept -> native_view_handle {
   return backends::view::get_native_handle(id);
 }
 
+auto view::get_required_extensions() -> std::span<cstr const> {
+  return backends::view::get_required_extensions();
+}
+
 auto view::make_surface_proxy(backend_id id, gfx::backend_type type)
   -> gfx::surface_proxy {
   return backends::view::make_surface_proxy(id, type);

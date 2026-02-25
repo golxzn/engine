@@ -3,10 +3,10 @@
 #include <glm/vec2.hpp>
 
 #include "gzn/fnd/func.hpp"
+#include "gzn/fnd/util/unsafe_any_ref.hpp"
 
 namespace gzn::gfx {
 
-class context_data_view;
 
 using surface_handle = void *;
 
@@ -14,11 +14,11 @@ struct surface_proxy {
   template<class T>
   using func = fnd::move_only_func<T>;
 
-  func<auto(context_data_view)->bool> setup{};
-  func<void(context_data_view)>       destroy{};
-  func<void(context_data_view)>       present{};
-  func<auto()->glm::u32vec2>          get_size{};
-  func<auto()->surface_handle>        get_handle{};
+  func<auto(fnd::util::unsafe_any_ref)->bool> setup{};
+  func<void(fnd::util::unsafe_any_ref)>       destroy{};
+  func<void(fnd::util::unsafe_any_ref)>       present{};
+  func<auto()->glm::u32vec2>                  get_size{};
+  func<auto()->surface_handle>                get_handle{};
 
   [[nodiscard]]
   constexpr auto valid() const noexcept {

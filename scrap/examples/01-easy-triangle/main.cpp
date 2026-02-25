@@ -62,7 +62,7 @@ int main() {
   auto ctx{ gfx::context::make<fnd::stack_owner>(gfx_storage, {
       .backend = gfx_backend,
       .surface_builder{
-        view->get_surface_proxy_builder(gfx_storage, gfx_backend)
+        view->get_surface_builder(gfx_storage, gfx_backend)
       }
   }) };
   gfx::cmd::setup_for(*ctx);

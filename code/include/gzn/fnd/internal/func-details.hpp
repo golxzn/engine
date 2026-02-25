@@ -27,7 +27,7 @@ union functor_storage_alignment {
 };
 
 usize inline constexpr MINIMUM_STORAGE_BYTES_COUNT{
-  sizeof(functor_storage_alignment)
+  sizeof(functor_storage_alignment) * 2
 };
 
 template<usize BytesCount>

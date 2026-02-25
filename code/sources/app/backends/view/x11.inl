@@ -25,7 +25,7 @@ struct vk_context {};
 #endif // defined(GZN_GFX_BACKEND_VULKAN)
 
 
-#if defined(GZN_GFX_BACKEND_OPENGL) || defined(GZN_GFX_BACKEND_OPENGL_ES2)
+#if defined(GZN_GFX_BACKEND_OPENGL)
 
 struct ogl_context {
   GLXContext context{};
@@ -37,8 +37,7 @@ struct egl_context {
   EGLContext context{ EGL_NO_CONTEXT };
 };
 
-#endif // defined(GZN_GFX_BACKEND_OPENGL) ||
-       // defined(GZN_GFX_BACKEND_OPENGL_ES2)
+#endif // defined(GZN_GFX_BACKEND_OPENGL)
 
 using graphics_data = std::variant<
 #if defined(GZN_GFX_BACKEND_METAL)
@@ -49,11 +48,10 @@ using graphics_data = std::variant<
   vk_context,
 #endif // defined(GZN_GFX_BACKEND_VULKAN)
 
-#if defined(GZN_GFX_BACKEND_OPENGL) || defined(GZN_GFX_BACKEND_OPENGL_ES2)
+#if defined(GZN_GFX_BACKEND_OPENGL)
   ogl_context,
   egl_context,
-#endif // defined(GZN_GFX_BACKEND_OPENGL) ||
-       // defined(GZN_GFX_BACKEND_OPENGL_ES2)
+#endif // defined(GZN_GFX_BACKEND_OPENGL)
   std::monostate>;
 
 struct backend_context {
@@ -111,11 +109,10 @@ struct view {
       case gfx::backend_type::vulkan: return {}; // make_vulkan_surface(id);
 #endif // defined(GZN_GFX_BACKEND_VULKAN)
 
-#if defined(GZN_GFX_BACKEND_OPENGL) || defined(GZN_GFX_BACKEND_OPENGL_ES2)
+#if defined(GZN_GFX_BACKEND_OPENGL)
       // case gfx::backend_type::egl   : return make_egl_surface(id);
       case gfx::backend_type::opengl: return make_opengl_surface(id);
-#endif // defined(GZN_GFX_BACKEND_OPENGL) ||
-       // defined(GZN_GFX_BACKEND_OPENGL_ES2)
+#endif // defined(GZN_GFX_BACKEND_OPENGL)
 
       default: break;
     }
@@ -292,7 +289,7 @@ private:
     XStoreName(ctx.display, ctx.window, "PLACE TITLE HERE DUDE");
   }
 
-#if defined(GZN_GFX_BACKEND_OPENGL) || defined(GZN_GFX_BACKEND_OPENGL_ES2)
+#if defined(GZN_GFX_BACKEND_OPENGL)
 #  pragma region EGL
 
   static auto select_visual_info(backend_context &ctx, VisualID visual_id)
@@ -468,8 +465,7 @@ private:
 
 #  pragma endregion OPENGL
 
-#endif // defined(GZN_GFX_BACKEND_OPENGL) ||
-       // defined(GZN_GFX_BACKEND_OPENGL_ES2)
+#endif // defined(GZN_GFX_BACKEND_OPENGL)
 
   constexpr static auto translate_to_key(XKeyEvent &ev) noexcept -> keys {
     auto const group{ 0 };

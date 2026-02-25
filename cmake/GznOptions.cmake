@@ -31,7 +31,7 @@ set_property(CACHE GZN_CXX_STANDARD PROPERTY STRINGS 23 26)
 
 set(GZN_GFX_BACKEND any CACHE STRING "GFX backend")
 set_property(CACHE GZN_GFX_BACKEND PROPERTY STRINGS
-  any metal vulkan opengl opengl_es2
+  any metal vulkan opengl
 )
 
 set(CMAKE_C_EXTENSIONS OFF)

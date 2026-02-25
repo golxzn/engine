@@ -2,7 +2,6 @@
 
 #include "./backends/cmd/metal.inl"
 #include "./backends/cmd/opengl.inl"
-#include "./backends/cmd/opengl_es2.inl"
 #include "./backends/cmd/vulkan.inl"
 #include "gzn/gfx/context.hpp"
 
@@ -11,8 +10,8 @@ namespace gzn::gfx {
 namespace {
 
 struct cache {
-  void (*clear)(context_data_view, cmd_clear const &){ nullptr };
-  void (*submit)(context_data_view){ nullptr };
+  void (*clear)(fnd::util::unsafe_any_ref, cmd_clear const &){ nullptr };
+  void (*submit)(fnd::util::unsafe_any_ref){ nullptr };
 };
 
 template<class backend>
@@ -35,10 +34,6 @@ cache inline constexpr vulkan{ make_cache_for<backends::vulkan>() };
 cache inline constexpr opengl{ make_cache_for<backends::opengl>() };
 #endif // defined(GZN_GFX_BACKEND_OPENGL)
 
-#if defined(GZN_GFX_BACKEND_OPENGL_ES2)
-cache inline constexpr opengl_es2{ make_cache_for<backends::opengl_es2>() };
-#endif // defined(GZN_GFX_BACKEND_OPENGL_ES2)
-
 cache const *_current_backend{
 #if !defined(GZN_GFX_BACKEND_ANY)
   &GZN_GFX_BACKEND
@@ -53,7 +48,6 @@ void cmd::setup_for(context &ctx) {
     case backend_type::metal     : _current_backend = &metal; break;
     case backend_type::vulkan    : _current_backend = &vulkan; break;
     case backend_type::opengl    : _current_backend = &opengl; break;
-    case backend_type::opengl_es2: _current_backend = &opengl_es2; break;
 
     default                      : std::unreachable();
   }

@@ -1,70 +1,35 @@
 #pragma once
 
 #include <span>
-#include <typeindex>
 
 #include <glm/vec2.hpp>
 
-#include "gzn/fnd/definitions.hpp"
 #include "gzn/fnd/owner.hpp"
+#include "gzn/fnd/util/unsafe_any_ref.hpp"
+#include "gzn/fnd/version.hpp"
 #include "gzn/gfx/backend-type.hpp"
 #include "gzn/gfx/render-capacities.hpp"
 #include "gzn/gfx/surface.hpp"
 
 namespace gzn::gfx {
 
+struct gpu_info;
+
 struct context_info {
-  backend_type         backend{ backend_type::any };
-  surface_builder_func surface_builder{};
-  render_capacities    capacities{};
-};
+  using select_gpu_func =
+    fnd::move_only_func<auto(std::span<gpu_info const>)->usize>;
 
-using storage_key   = u32;
-using native_handle = void *;
+  backend_type backend{ backend_type::any };
 
-class context_data_view {
-public:
-  constexpr context_data_view() = default;
+  std::string_view app_name{};
+  fnd::version     app_version{ fnd::version::make(0, 1, 0) };
+  std::string_view engine_name{ app_name };
+  fnd::version     engine_version{ fnd::version::make(0, 1, 0) };
 
-  constexpr explicit context_data_view(auto &data) noexcept
-    : ptr{ static_cast<void *>(&data) } {
-    gzn_if_debug(type = typeid(std::remove_pointer_t<decltype(data)>));
-  }
-
-  constexpr explicit context_data_view(auto *data) noexcept
-    : ptr{ static_cast<void *>(data) } {
-    gzn_assertion(data != nullptr, "Invalid data!");
-    gzn_if_debug(type = typeid(std::remove_pointer_t<decltype(data)>));
-  }
-
-  constexpr context_data_view(context_data_view const &other)     = default;
-  constexpr context_data_view(context_data_view &&other) noexcept = default;
-  constexpr auto operator=(context_data_view const &other)
-    -> context_data_view & = default;
-  constexpr auto operator=(context_data_view &&other) noexcept
-    -> context_data_view & = default;
-
-  template<class T>
-  [[nodiscard]]
-  gzn_inline constexpr auto as(this auto &&self) noexcept {
-    gzn_assertion(self.ptr != nullptr, "Invalid data!");
-    gzn_if_debug(gzn_assertion(self.type == typeid(T), "Invalid data type!"));
-    return static_cast<T *>(self.ptr);
-  }
-
-  [[nodiscard]]
-  constexpr auto operator==(std::nullptr_t) const noexcept -> bool {
-    return ptr == nullptr;
-  }
-
-  [[nodiscard]]
-  constexpr auto operator!=(std::nullptr_t) const noexcept -> bool {
-    return ptr != nullptr;
-  }
-
-private:
-  void *ptr{ nullptr };
-  gzn_if_debug(std::type_index type{ typeid(void) });
+  surface_builder_func    surface_builder{};
+  std::span<cstr const>   extensions{};
+  mutable select_gpu_func select_gpu{};
+  render_capacities       capacities{};
 };
 
 class context {
@@ -73,9 +38,9 @@ class context {
   friend fnd::heap_owner<context>;
 
   struct members {
-    surface_proxy     surface{};
-    backend_type      backend{};
-    context_data_view data_view{};
+    surface_proxy             surface{};
+    backend_type              backend{};
+    fnd::util::unsafe_any_ref data_ref{};
   } m;
 
   explicit context(members info) noexcept;
@@ -96,24 +61,30 @@ public:
   ) noexcept -> usize;
 
   [[nodiscard]]
-  static auto make(fnd::util::allocator_type auto &alloc, context_info info)
-    -> context {
+  static auto is_available(backend_type type) -> bool;
+
+  [[nodiscard]]
+  static auto make(
+    fnd::util::allocator_type auto &alloc,
+    context_info                    info,
+    fnd::util::unsafe_any_ref       api_specific = {}
+  ) -> context {
     auto const required_space{
       calculate_required_space_for(info.backend, info.capacities)
     };
     if (auto place{ alloc.allocate(required_space, 0u) }; place) {
       std::span<byte> storage{ static_cast<byte *>(place), required_space };
-      return context{ construct(storage, std::move(info)) };
+      return context{ construct(storage, std::move(info), api_specific) };
     }
     return context{ {} };
   }
 
   [[nodiscard]] auto is_valid() const noexcept -> bool {
-    return m.data_view != nullptr;
+    return m.data_ref != nullptr;
   }
 
-  [[nodiscard]] auto data() const noexcept -> context_data_view {
-    return m.data_view;
+  [[nodiscard]] auto data() const noexcept -> fnd::util::unsafe_any_ref {
+    return m.data_ref;
   }
 
   [[nodiscard]] auto get_surface_proxy(this auto &&self) {
@@ -123,7 +94,11 @@ public:
 private:
   void present();
 
-  static auto construct(std::span<byte> storage, context_info info) -> members;
+  static auto construct(
+    std::span<byte>           storage,
+    context_info              info,
+    fnd::util::unsafe_any_ref api_specific
+  ) -> members;
 };
 
 } // namespace gzn::gfx

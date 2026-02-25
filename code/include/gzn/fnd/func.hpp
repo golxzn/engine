@@ -12,7 +12,7 @@
 namespace gzn::fnd {
 
 inline constexpr usize FUNC_STORAGE_BYTES_COUNT{
-  func_internal::MINIMUM_STORAGE_BYTES_COUNT /*sizeof(void*) * 3*/
+  func_internal::MINIMUM_STORAGE_BYTES_COUNT
 };
 
 template<class...>
@@ -112,7 +112,7 @@ public:
                   func_internal::is_move_only_function_specialization_v<
                     std::remove_cvref_t<F>>) {
       if (func) {
-        vptr = make<true, VT>(alloc, storage, std::forward<F>(func));
+        vptr = make<false, VT>(alloc, storage, std::forward<F>(func));
       } else {
         vptr = vtable::make_empty();
       }
@@ -125,7 +125,7 @@ public:
         func.vptr->copy(allocator, &func.storage, &storage);
       }
     } else {
-      vptr = make<true, VT>(alloc, storage, std::forward<F>(func));
+      vptr = make<false, VT>(alloc, storage, std::forward<F>(func));
     }
   }
 
@@ -195,7 +195,9 @@ public:
 
   using func_internal::function_call<move_only_func, Signature>::operator();
 
-  explicit operator bool() const noexcept { return vptr->dispatch; }
+  explicit operator bool() const noexcept {
+    return vptr != vtable::make_empty();
+  }
 
   void swap(move_only_func &other) noexcept {
     vtable::swap(vptr, storage, other.vptr, other.storage);
@@ -349,7 +351,9 @@ public:
 
   using func_internal::function_call<copyable_func, Signature>::operator();
 
-  constexpr explicit operator bool() const noexcept { return vptr->dispatch; }
+  constexpr explicit operator bool() const noexcept {
+    return vptr != vtable::make_empty();
+  }
 
   constexpr void swap(copyable_func &other) noexcept {
     vtable::swap(vptr, storage, other.vptr, other.storage);

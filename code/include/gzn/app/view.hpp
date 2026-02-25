@@ -1,6 +1,7 @@
 #pragma once
 
 #include <limits>
+#include <span>
 #include <string_view>
 
 #include <glm/vec2.hpp>
@@ -83,7 +84,7 @@ public:
   }
 
   [[nodiscard]]
-  auto get_surface_proxy_builder(
+  auto get_surface_builder(
     fnd::util::allocator_type auto &alloc,
     gfx::backend_type               backend
   ) const {
@@ -100,6 +101,9 @@ public:
 
   [[nodiscard]]
   auto get_native_handle() const noexcept -> native_view_handle;
+
+  [[nodiscard]]
+  static auto get_required_extensions() -> std::span<cstr const>;
 
 private:
   backend_id id{ invalid_backend_id };
