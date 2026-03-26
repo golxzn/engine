@@ -103,14 +103,15 @@ BreakAdjacentStringLiterals: true
 BreakAfterAttributes: Leave
 BreakAfterJavaFieldAnnotations: false
 BreakAfterReturnType: None
-# BreakAfterOpenBracketBracedList: true
+BreakAfterOpenBracketBracedList: true
+BreakAfterOpenBracketFunction: true
 BreakBeforeBinaryOperators: None
 BreakBeforeBraces: Attach
-# BreakBeforeCloseBracketBracedList: true
-# BreakBeforeCloseBracketFunction: true
-# BreakBeforeCloseBracketIf: true
-# BreakBeforeCloseBracketLoop: true
-# BreakBeforeCloseBracketSwitch: true
+BreakBeforeCloseBracketBracedList: true
+BreakBeforeCloseBracketFunction: true
+BreakBeforeCloseBracketIf: true
+BreakBeforeCloseBracketLoop: true
+BreakBeforeCloseBracketSwitch: true
 BreakBeforeConceptDeclarations: Always
 BreakBeforeInlineASMColon: OnlyMultiline
 BreakBeforeTernaryOperators: true
