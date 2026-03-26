@@ -4,18 +4,22 @@ add_library(gzn::deps ALIAS gzn_deps)
 
 # >--------------------- | view backends |-----------------------< #
 
-function(select_view_backend)
+function(select_view_backend glad_extensions)
   if (MSVC)
     gzn_msg(STATUS "View backend: WinAPI")
     return()
   endif()
 
-  find_package(wayland)
-  if (WAYLAND_FOUND)
+  find_package(wayland COMPONENTS client server cursor egl REQUIRED)
 
-    # target_link_libraries(gzn_deps INTERFACE wayland)
-    target_link_libraries(gzn_deps INTERFACE ${WAYLAND_LIBRARIES})
-    target_include_directories(gzn_deps INTERFACE ${WAYLAND_INCLUDE_DIR})
+  if (WAYLAND_FOUND)
+    target_link_libraries(gzn_deps INTERFACE
+      wayland::client
+      wayland::server
+      wayland::cursor
+      wayland::egl
+    )
+
     target_compile_definitions(gzn_deps INTERFACE GZN_VIEW_BACKEND_WAYLAND)
 
     function(add_wayland_protocol_target TARGET_NAME SPEC NAME)
@@ -33,10 +37,12 @@ function(select_view_backend)
       target_include_directories(${TARGET_NAME} PUBLIC ${out_path}/include/)
 
       target_link_libraries(gzn_deps INTERFACE ${TARGET_NAME})
-      # target_include_directories(gzn_deps INTERFACE ${out_path}/include)
     endfunction()
 
-    add_wayland_protocol_target(xdg_shell "/stable/xdg-shell/xdg-shell.xml" xdg-shell)
+    add_wayland_protocol_target(
+      xdg_shell "/stable/xdg-shell/xdg-shell.xml" xdg-shell
+    )
+    set(glad_extensions VK_KHR_wayland_surface PARENT_SCOPE)
     gzn_msg(STATUS "View backend: Wayland")
     return()
   endif()
@@ -45,6 +51,7 @@ function(select_view_backend)
   if (X11_FOUND)
     target_link_libraries(gzn_deps INTERFACE X11::X11 X11::xcb X11::Xkb)
     target_compile_definitions(gzn_deps INTERFACE GZN_VIEW_BACKEND_X11)
+    set(glad_extensions "EGL_KHR_platform_x11;EGL_EXT_platform_xcb" PARENT_SCOPE)
     gzn_msg(STATUS "View backend: X11")
     return()
   endif()
@@ -53,29 +60,49 @@ function(select_view_backend)
 
 endfunction()
 
-select_view_backend()
+set(glad_apis)
+set(glad_extensions)
+select_view_backend(glad_extensions )
 
 # >--------------------------| OpenGL |--------------------------< #
 
-if(GZN_GFX_BACKEND MATCHES "^(any|opengl|opengl_es)$")
+if(GZN_GFX_BACKEND MATCHES "^(any|opengl)$")
   find_package(OpenGL)
-  target_link_libraries(gzn_deps INTERFACE OpenGL::EGL)
+  target_link_libraries(gzn_deps INTERFACE OpenGL::EGL OpenGL::GLES3)
 
-  if(GZN_GFX_BACKEND MATCHES "^(any|opengl)$")
-    target_link_libraries(gzn_deps INTERFACE OpenGL::OpenGL)
-  endif()
-
-  if(GZN_GFX_BACKEND MATCHES "^(any|opengl_es)$")
-    target_link_libraries(gzn_deps INTERFACE OpenGL::GLES3)
-  endif()
+  list(APPEND glad_apis
+    gl:core=4.1
+    egl=1.3
+    # glx for x11
+    # wgl for wayland
+  )
+  list(APPEND glad_extensions
+    EGL_EXT_device_base
+    EGL_EXT_device_query
+    EGL_EXT_platform_base
+    EGL_EXT_platform_query
+  )
+  # OpenGL::OpenGL  maybe we don't need it thanks to GLAD
 endif()
 
 # >--------------------------| Vulkan |--------------------------< #
 
 if(GZN_GFX_BACKEND MATCHES "^(any|vulkan)$")
   find_package(Vulkan)
-  target_link_libraries(gzn_deps INTERFACE Vulkan::Vulkan Vulkan::Headers)
+  target_link_libraries(gzn_deps INTERFACE Vulkan::Vulkan)
+
+  list(APPEND glad_apis vulkan=1.1)
+  list(APPEND glad_extensions
+    VK_EXT_debug_utils
+    VK_KHR_swapchain
+  )
 endif()
+
+# >---------------------------| GLAD |---------------------------< #
+
+add_subdirectory(glad2/cmake)
+glad_add_library(glad STATIC LOADER API ${glad_apis} EXTENSIONS ${glad_extension})
+target_link_libraries(gzn_deps INTERFACE glad)
 
 # >---------------------------| GLM |----------------------------< #
 

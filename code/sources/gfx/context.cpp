@@ -30,6 +30,18 @@ auto default_select_gpu(std::span<gpu_info const> const devices) -> usize {
   return selected.idx;
 }
 
+void load_backends() {
+  using namespace backends;
+
+#if defined(GZN_GFX_BACKEND_ANY)
+  ctx::metal::load();
+  ctx::vulkan::load();
+  ctx::opengl::load();
+#else
+  ctx::GZN_GFX_BACKEND::load()
+#endif // defined(GZN_GFX_BACKEND_ANY)
+}
+
 auto select_available(backend_type const preferred)
   -> std::optional<backend_type> {
 #if defined(GZN_GFX_BACKEND_ANY)
@@ -188,6 +200,8 @@ auto context::construct(
   context_info              info,
   fnd::util::unsafe_any_ref api_specific
 ) -> members {
+  load_backends();
+
   auto constexpr none{ gfx::backend_type::any };
   info.backend = select_available(info.backend).value_or(none);
   if (info.backend == none) { return {}; }

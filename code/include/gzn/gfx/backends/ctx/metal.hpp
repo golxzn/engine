@@ -14,6 +14,10 @@ struct context_info;
 namespace gzn::gfx::backends::ctx {
 
 struct metal {
+  static void load() {}
+
+  static void unload() {}
+
   static bool is_available() noexcept { return false; }
 
   static auto calc_required_space_for(render_capacities const &caps) noexcept

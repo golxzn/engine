@@ -24,25 +24,25 @@ struct SwapchainElement {
   VkFence         lastFence;
 };
 
-static VkSurfaceKHR      vulkanSurface    = VK_NULL_HANDLE;
-static VkPhysicalDevice  physDevice       = VK_NULL_HANDLE;
-static VkDevice          device           = VK_NULL_HANDLE;
-static VkQueue           queue            = VK_NULL_HANDLE;
-static VkCommandPool     commandPool      = VK_NULL_HANDLE;
-static VkSwapchainKHR    swapchain        = VK_NULL_HANDLE;
-static VkRenderPass      renderPass       = VK_NULL_HANDLE;
-static SwapchainElement *elements         = NULL;
-static int               quit             = 0;
-static int               readyToResize    = 0;
-static int               resize           = 0;
-static int               newWidth         = 0;
-static int               newHeight        = 0;
-static VkFormat          format           = VK_FORMAT_UNDEFINED;
-static uint32_t          width            = 1600;
-static uint32_t          height           = 900;
-static uint32_t          currentFrame     = 0;
-static uint32_t          imageIndex       = 0;
-static uint32_t          imageCount       = 0;
+static VkSurfaceKHR      vulkanSurface = VK_NULL_HANDLE;
+static VkPhysicalDevice  physDevice    = VK_NULL_HANDLE;
+static VkDevice          device        = VK_NULL_HANDLE;
+static VkQueue           queue         = VK_NULL_HANDLE;
+static VkCommandPool     commandPool   = VK_NULL_HANDLE;
+static VkSwapchainKHR    swapchain     = VK_NULL_HANDLE;
+static VkRenderPass      renderPass    = VK_NULL_HANDLE;
+static SwapchainElement *elements      = NULL;
+static int               quit          = 0;
+static int               readyToResize = 0;
+static int               resize        = 0;
+static int               newWidth      = 0;
+static int               newHeight     = 0;
+static VkFormat          format        = VK_FORMAT_UNDEFINED;
+static uint32_t          width         = 1600;
+static uint32_t          height        = 900;
+static uint32_t          currentFrame  = 0;
+static uint32_t          imageIndex    = 0;
+static uint32_t          imageCount    = 0;
 
 static void createSwapchain();
 static void destroySwapchain();
@@ -64,13 +64,15 @@ int main() {
 
   fnd::base_allocator gfx_alloc{};
   auto constexpr backend_type{ gfx::backend_type::vulkan };
-  gfx::context_info ctx_info{
-    .backend = backend_type,
-    .app_name{ "wayland-vulkan-testing" },
-    .surface_builder{ view->get_surface_builder(gfx_alloc, backend_type) },
-    .extensions{ view->get_required_extensions() }
-  };
-  auto ctx{ gfx::context::make(gfx_alloc, std::move(ctx_info)) };
+  auto ctx{ gfx::context::make(
+    gfx_alloc,
+    gfx::context_info{
+      .backend = backend_type,
+      .app_name{ "wayland-vulkan-testing" },
+      .surface_builder{ view->get_surface_builder(gfx_alloc, backend_type) },
+      .extensions{ view->get_required_extensions() },
+    }
+  ) };
   if (!ctx.is_valid()) {
     std::fprintf(stderr, "Failed to make gfx::context!\n");
     return EXIT_FAILURE;

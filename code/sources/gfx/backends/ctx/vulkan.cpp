@@ -14,56 +14,20 @@ namespace gzn::gfx::backends::ctx {
 
 namespace {
 
+constexpr cstr THIS_MODULE{ "gfx::ctx::vulkan" };
+
+int glad_vk_version{};
+
 vulkan g_ctx{};
 
-VkAllocationCallbacks g_default_callbacks{
-  .pUserData             = nullptr,
-  .pfnAllocation         = nullptr,
-  .pfnReallocation       = nullptr,
-  .pfnFree               = nullptr,
-  .pfnInternalAllocation = nullptr,
-  .pfnInternalFree       = nullptr,
-};
-
-static auto on_vulkan_error(
-  VkDebugUtilsMessageSeverityFlagBitsEXT      severity,
-  VkDebugUtilsMessageTypeFlagsEXT             type,
-  VkDebugUtilsMessengerCallbackDataEXT const *callback_data,
-  void                                       *user_data
-) -> VkBool32 {
-  std::printf("[Vulkan]");
-
-  switch (type) {
-    case VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT:
-      std::printf("[general    ]");
-      break;
-    case VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT:
-      std::printf("[validation ]");
-      break;
-    case VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT:
-      std::printf("[performance]");
-      break;
-  }
-
-  switch (severity) {
-    case VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT:
-      std::printf("[verbose] ");
-      break;
-    default:
-    case VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT:
-      std::printf("[info   ] ");
-      break;
-    case VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT:
-      std::printf("[warning] ");
-      break;
-    case VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT:
-      std::printf("[error  ] ");
-      break;
-  }
-
-  std::printf("%s\n", callback_data->pMessage);
-  return 0;
-}
+// VkAllocationCallbacks g_default_callbacks{
+//   .pUserData             = nullptr,
+//   .pfnAllocation         = nullptr,
+//   .pfnReallocation       = nullptr,
+//   .pfnFree               = nullptr,
+//   .pfnInternalAllocation = nullptr,
+//   .pfnInternalFree       = nullptr,
+// };
 
 } // namespace
 
@@ -88,6 +52,17 @@ struct offset_accumulator {
   }
 };
 
+void vulkan::load() {
+  glad_vk_version = gladLoaderLoadVulkan(
+    VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE
+  );
+}
+
+void vulkan::unload() {
+  gladLoaderUnloadVulkan();
+  glad_vk_version = 0;
+}
+
 auto vulkan::is_available() -> bool {
   u32        ext_count;
   auto const status{
@@ -106,8 +81,15 @@ auto vulkan::make_context_on(
   fnd::util::unsafe_any_ref extra_storage
 ) -> vulkan * {
   if (g_ctx.instance != VK_NULL_HANDLE) {
+    info.log_func.err(THIS_MODULE, "Vulkan backend is already exists!");
     /// @todo think: nullptr or existing instance?
-    /// @todo error log
+    return nullptr;
+  }
+  // int const version{
+  //   gladLoaderLoadVulkan(VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE)
+  // };
+  if (!glad_vk_version) {
+    info.log_func.fatal(THIS_MODULE, "Failed to initialize GLAD");
     return nullptr;
   }
 
@@ -126,7 +108,8 @@ auto vulkan::make_context_on(
     .instance  = instance,
 #if defined(GZN_DEBUG)
     .debug_messenger = debug_messenger,
-#endif // defined(GZN_DEBUG)
+#endif // defined(GZN_DEBUG),
+    .log{ info.log_func },
   }; // NOLINT
   return &g_ctx;
 }
@@ -141,7 +124,12 @@ auto vulkan::setup(
   auto const &caps{ info.capacities };
   auto const  required_space{ calc_required_space_for(caps) };
   if (std::size(storage) != required_space) {
-    // @todo error log
+    g_ctx.log.err(
+      THIS_MODULE,
+      "The storage size (%zu) is not enough for required caps (%zu)",
+      std::size(storage),
+      required_space
+    );
     return false;
   }
 
@@ -150,7 +138,7 @@ auto vulkan::setup(
 
   auto physical_device{ select_physical_device(g_ctx.instance, info) };
   if (physical_device == VK_NULL_HANDLE) {
-    // @todo error log
+    g_ctx.log.err(THIS_MODULE, "Failed to select physical device");
     return false;
   }
 
@@ -166,12 +154,15 @@ auto vulkan::setup(
   auto const offset_buffers{ off.set<vk_buffer>(caps.buffers_count) };
   auto const offset_samplers{ off.set<vk_sampler>(caps.samples_count) };
 
+  gladLoaderLoadVulkan(g_ctx.instance, physical_device, logical_device);
+
   g_ctx = vulkan{
     .allocator = g_ctx.allocator,
     .instance  = g_ctx.instance,
 #if defined(GZN_DEBUG)
     .debug_messenger = g_ctx.debug_messenger,
 #endif  // defined(GZN_DEBUG)
+    .log{ g_ctx.log },
 
     .surface         = surface,
     .physical_device = physical_device,
@@ -289,6 +280,46 @@ auto vulkan::make_instance(
 
 #if defined(GZN_DEBUG)
 
+static auto on_vulkan_error(
+  VkDebugUtilsMessageSeverityFlagBitsEXT      severity,
+  VkDebugUtilsMessageTypeFlagsEXT             type,
+  VkDebugUtilsMessengerCallbackDataEXT const *callback_data,
+  void                                       *user_data
+) -> VkBool32 {
+  std::printf("[Vulkan]");
+
+  switch (type) {
+    case VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT:
+      std::printf("[general    ]");
+      break;
+    case VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT:
+      std::printf("[validation ]");
+      break;
+    case VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT:
+      std::printf("[performance]");
+      break;
+  }
+
+  switch (severity) {
+    case VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT:
+      std::printf("[verbose] ");
+      break;
+    default:
+    case VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT:
+      std::printf("[info   ] ");
+      break;
+    case VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT:
+      std::printf("[warning] ");
+      break;
+    case VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT:
+      std::printf("[error  ] ");
+      break;
+  }
+
+  std::printf("%s\n", callback_data->pMessage);
+  return 0;
+}
+
 auto vulkan::make_debug_messenger(
   VkAllocationCallbacks *alloc,
   VkInstance             instance
@@ -301,9 +332,9 @@ auto vulkan::make_debug_messenger(
     .messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT |
                        VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT |
                        VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT,
-    .messageType = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT |
-                   VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT |
-                   VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT,
+    .messageType     = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT |
+                       VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT |
+                       VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT,
     .pfnUserCallback = on_vulkan_error, /// @todo user log func
     .pUserData       = nullptr,
   };

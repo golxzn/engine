@@ -35,25 +35,33 @@ void main() {
 
 int main() {
   using namespace gzn;
-  fnd::base_allocator alloc{};
 
-  auto view{
-    app::view::make<fnd::stack_owner>(
-      alloc,
-      {
-        .size{ 1920, 1080 },
-        }
-    )
+  fnd::stack_arena_allocator<512> view_alloc{};
+
+  app::view_info const view_info{
+    .title = "vk test",
+    .size{ 1720, 1040 },
   };
-  if (!view.is_alive()) { return EXIT_FAILURE; }
+  auto view{ app::view::make<fnd::stack_owner>(view_alloc, view_info) };
+  if (!view.is_alive()) {
+    std::fprintf(stderr, "Failed to make app::view!\n");
+    return EXIT_FAILURE;
+  }
 
-  auto render{ gfx::context::make<fnd::stack_owner>(
-    alloc,
-    gfx::context_info{
-      .backend = gfx::backend_type::opengl,
-      .surface_builder{ view->get_surface_proxy_builder(alloc) } }
-  ) };
-  if (!render.is_alive()) { return EXIT_FAILURE; }
+  fnd::base_allocator gfx_alloc{};
+  auto constexpr backend_type{ gfx::backend_type::opengl };
+  gfx::context_info ctx_info{
+    .backend = backend_type,
+    .app_name{ "wayland-opengl-testing" },
+    .surface_builder{ view->get_surface_builder(gfx_alloc, backend_type) },
+    .extensions{ view->get_required_extensions() }
+  };
+  auto ctx{ gfx::context::make(gfx_alloc, std::move(ctx_info)) };
+  if (!ctx.is_valid()) {
+    std::fprintf(stderr, "Failed to make gfx::context!\n");
+    return EXIT_FAILURE;
+  }
+
 
   auto const version{ gladLoadGL() };
   if (version == 0) { return EXIT_FAILURE; }

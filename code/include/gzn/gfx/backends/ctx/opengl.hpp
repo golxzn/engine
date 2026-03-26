@@ -14,29 +14,27 @@ struct context_info;
 namespace gzn::gfx::backends::ctx {
 
 struct opengl {
-  static bool is_available() noexcept { return false; }
+  static void load();
+
+  static void unload();
+
+  static bool is_available() noexcept;
 
   static auto calc_required_space_for(render_capacities const &caps) noexcept
-    -> usize {
-    return 0;
-  }
+    -> usize;
 
   static auto make_context_on(
     context_info const       &info,
     fnd::util::unsafe_any_ref extra
-  ) -> opengl * {
-    return nullptr;
-  }
+  ) -> opengl *;
 
   static auto setup(
     std::span<byte>     storage,
     context_info const &info,
     surface_proxy      &surface
-  ) -> bool {
-    return false;
-  }
+  ) -> bool;
 
-  static void destroy() {}
+  static void destroy();
 };
 
 } // namespace gzn::gfx::backends::ctx

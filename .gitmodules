@@ -4,3 +4,6 @@
 [submodule "code/third-party/glm"]
 	path = deps/glm
 	url = git@github.com:g-truc/glm.git
+[submodule "deps/glad2"]
+	path = deps/glad2
+	url = git@github.com:Dav1dde/glad.git

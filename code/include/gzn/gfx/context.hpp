@@ -4,6 +4,7 @@
 
 #include <glm/vec2.hpp>
 
+#include "gzn/fnd/log-func.hpp"
 #include "gzn/fnd/owner.hpp"
 #include "gzn/fnd/util/unsafe_any_ref.hpp"
 #include "gzn/fnd/version.hpp"
@@ -25,6 +26,8 @@ struct context_info {
   fnd::version     app_version{ fnd::version::make(0, 1, 0) };
   std::string_view engine_name{ app_name };
   fnd::version     engine_version{ fnd::version::make(0, 1, 0) };
+
+  fnd::log_func log_func{};
 
   surface_builder_func    surface_builder{};
   std::span<cstr const>   extensions{};

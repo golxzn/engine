@@ -1,10 +1,13 @@
 #if defined(GZN_GFX_BACKEND_VULKAN)
 
+#  include <span>
 #  include <tuple>
 
-#  include <vulkan/vulkan.hpp>
+#  include <glad/vulkan.h>
+#  include <vulkan/vulkan.h>
 
 #  include "gzn/fnd/containers/pool.hpp"
+#  include "gzn/fnd/log-func.hpp"
 #  include "gzn/fnd/util/unsafe_any_ref.hpp"
 #  include "gzn/gfx/render-capacities.hpp"
 #  include "gzn/gfx/surface.hpp"
@@ -41,6 +44,7 @@ struct vulkan {
   VkAllocationCallbacks *allocator{};
   VkInstance             instance{ VK_NULL_HANDLE };
   gzn_if_debug(VkDebugUtilsMessengerEXT debug_messenger{ VK_NULL_HANDLE });
+  fnd::log_func log{};
 
   VkSurfaceKHR     surface{ VK_NULL_HANDLE };
   VkPhysicalDevice physical_device{ VK_NULL_HANDLE };
@@ -52,6 +56,9 @@ struct vulkan {
   fnd::non_owning_pool<vk_pipeline> pipelines;
   fnd::non_owning_pool<vk_buffer>   buffers;
   fnd::non_owning_pool<vk_sampler>  samplers;
+
+  static void load();
+  static void unload();
 
   static auto is_available() -> bool;
 

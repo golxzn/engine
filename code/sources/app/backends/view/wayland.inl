@@ -4,7 +4,8 @@
 #include <xdg-shell.h>
 
 #if defined(GZN_GFX_BACKEND_VULKAN)
-#  include <vulkan/vulkan.h>
+#include <glad/vulkan.h>
+// #  include <vulkan/vulkan.h>
 #  include <vulkan/vulkan_wayland.h>
 #endif // defined(GZN_GFX_BACKEND_VULKAN)
 
