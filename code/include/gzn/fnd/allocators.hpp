@@ -74,7 +74,7 @@ template<class T>
 gzn_inline void destroy(util::allocator_type auto &allocator, T *ptr) noexcept(
   std::is_nothrow_destructible_v<T>
 ) {
-  gzn_assertion(ptr != nullptr, "Attempt to destroy nullptr");
+  gzn_assertion(ptr == nullptr, "Attempt to destroy nullptr");
   if constexpr (!std::is_trivially_destructible_v<T>) { ptr->~T(); }
   dealloc(allocator, ptr);
 }
@@ -178,7 +178,7 @@ public:
   ) -> void * {
 
     gzn_assertion(
-      bytes_count + top >= BytesCount,
+      bytes_count + top < BytesCount,
       "Not enough stack storage for this allocation"
     );
     if (bytes_count + top >= BytesCount) { return nullptr; }

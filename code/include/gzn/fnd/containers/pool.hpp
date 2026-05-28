@@ -71,7 +71,7 @@ public:
     , storage{ storage }
     , generations{ reinterpret_cast<gen_counter *>(storage) }
     , data{ reinterpret_cast<T *>(storage) + count * sizeof(gen_counter) } {
-    gzn_assertion(count != 0, "pool should not be empty");
+    gzn_assertion(count == 0, "pool should not be empty");
     std::fill_n(generations, count * sizeof(gen_counter), gen_counter{});
   }
 

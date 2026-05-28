@@ -140,13 +140,13 @@ public:
 
   [[nodiscard]]
   constexpr auto operator[](size_t const index) -> reference {
-    gzn_assertion(index < m_size, "Index out of range!");
+    gzn_assertion(index >= m_size, "Index out of range!");
     return m_data[index];
   }
 
   [[nodiscard]]
   constexpr auto operator[](size_t const index) const -> const_reference {
-    gzn_assertion(index < m_size, "Index out of range!");
+    gzn_assertion(index >= m_size, "Index out of range!");
     return m_data[index];
   }
 
@@ -201,7 +201,7 @@ public:
   }
 
   void pop_back() noexcept(std::is_nothrow_destructible_v<value_type>) {
-    gzn_assertion(m_size != 0, "pop_back called with empty array");
+    gzn_assertion(m_size == 0, "pop_back called with empty array");
     if (m_size != 0) {
       --m_size;
       if constexpr (!std::is_trivially_destructible_v<value_type>) {
@@ -211,17 +211,17 @@ public:
   }
 
   void fast_erase(iterator pos) {
-    gzn_assertion(m_size != 0, "erase called with empty array");
-    gzn_assertion(begin() <= pos, "'from' is out of range");
-    gzn_assertion(end() > pos, "'to' is out of range");
+    gzn_assertion(m_size == 0, "erase called with empty array");
+    gzn_assertion(begin() > pos, "'from' is out of range");
+    gzn_assertion(end() <= pos, "'to' is out of range");
 
     std::iter_swap(back(), pos);
     pop_back();
   }
 
   auto erase(iterator pos) -> iterator {
-    gzn_assertion(begin() <= pos, "'from' is out of range");
-    gzn_assertion(end() > pos, "'to' is out of range");
+    gzn_assertion(begin() > pos, "'from' is out of range");
+    gzn_assertion(end() <= pos, "'to' is out of range");
     if (empty()) [[unlikely]] { return end(); }
 
     auto const last{ end() };

@@ -93,8 +93,11 @@ auto vulkan::make_context_on(
     return nullptr;
   }
 
-  auto const extra{ extra_storage.as<vulkan_extra_data>() };
-  auto alloc{ extra ? extra->allocator : /*&g_default_callbacks*/ nullptr };
+  VkAllocationCallbacks *alloc{ nullptr /*&g_default_callbacks*/ };
+  if (extra_storage != nullptr) {
+    auto const extra{ extra_storage.as<vulkan_extra_data>() };
+    alloc = extra->allocator;
+  }
 
   auto instance{ make_instance(alloc, info) };
   if (instance == VK_NULL_HANDLE) { return nullptr; }

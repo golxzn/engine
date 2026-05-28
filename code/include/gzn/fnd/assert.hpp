@@ -28,9 +28,12 @@ void on_assert_failure(cstr expression);
 #  define gzn_do_assertion(message)                                 \
     ((void)(gzn::fnd::on_assert_failure(__FILE__ ": " message), 0))
 
-#  define gzn_assertion(expression, message)                          \
-    ((void)((expression) ||                                           \
-            (gzn::fnd::on_assert_failure(__FILE__ ": " message), 0)))
+#  define gzn_assertion(expression, message)                \
+    (static_cast<bool>(expression)                          \
+       ? gzn::fnd::on_assert_failure(                       \
+           __FILE__ " \"" #expression "\" failed: " message \
+         )                                                  \
+       : void(0))
 #else
 #  define gzn_do_assertion(message)
 #  define gzn_assertion(expression, message)

@@ -1,5 +1,7 @@
 #pragma once
 
+#define gzn_comma ,
+
 #if defined(_MSC_VER)
 #  define GZN_INLINE __forceinline
 #elif defined(__GNUC__)

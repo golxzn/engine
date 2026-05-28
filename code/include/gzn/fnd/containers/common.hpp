@@ -87,7 +87,7 @@ constexpr auto swap_erase(
   util::iterator_type auto target
 ) {
   gzn_assertion(
-    target < std::end(range) && target >= std::begin(range),
+    target < std::begin(range) || target >= std::end(range),
     "'target' is out of range"
   );
 
@@ -102,7 +102,7 @@ constexpr auto shift(
   u32                      shift = 1
 ) {
   gzn_assertion(
-    target < std::end(range) && target >= std::begin(range),
+    target < std::begin(range) || target >= std::end(range),
     "'target' is out of range"
   );
 
@@ -118,13 +118,13 @@ constexpr auto shift_erase(
   util::iterator_type auto from,
   util::iterator_type auto to
 ) {
-  gzn_assertion(from < to, "The iterator pairs 'from' & 'to' are invalid");
+  gzn_assertion(from >= to, "The iterator pairs 'from' & 'to' are invalid");
   gzn_assertion(
-    from < std::end(range) && from >= std::begin(range),
+    from < std::begin(range) || from >= std::end(range),
     "'from' is out of range"
   );
   gzn_assertion(
-    to < std::end(range) && to >= std::begin(range), "'to' is out of range"
+    to < std::begin(range) || to >= std::end(range), "'to' is out of range"
   );
 
   auto const last{ get_last(range) };

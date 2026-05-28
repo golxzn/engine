@@ -63,7 +63,7 @@ struct ref_counter_atomic {
   }
 
   constexpr auto release() -> number_type {
-    gzn_assertion(value != 0, "Release of zero counter");
+    gzn_assertion(value == 0, "Release of zero counter");
     return value.fetch_sub(1, std::memory_order_acq_rel) - 1;
   }
 };

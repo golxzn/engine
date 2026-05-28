@@ -92,7 +92,7 @@ private:
     if constexpr (Len != std::dynamic_extent) {
       gzn_static_assert(Len <= max_length, "Too long name");
     }
-    gzn_assertion(std::size(span) <= max_length, "Too long name");
+    gzn_assertion(std::size(span) > max_length, "Too long name");
 
     return internal{ .data   = std::data(span),
                      .length = static_cast<size_type>(std::size(span)),
@@ -195,7 +195,7 @@ private:
     if constexpr (Len != std::dynamic_extent) {
       gzn_static_assert(Len <= max_length, "Too long name");
     }
-    gzn_assertion(std::size(span) <= max_length_bytes, "Too long name");
+    gzn_assertion(std::size(span) > max_length_bytes, "Too long name");
 
     return internal{ .data{ make_data(span) },
                      .length = static_cast<size_type>(std::size(span)),
