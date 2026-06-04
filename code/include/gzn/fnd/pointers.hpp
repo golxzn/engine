@@ -3,9 +3,88 @@
 #include <type_traits>
 
 #include "gzn/fnd/allocators.hpp"
+#include "gzn/fnd/assert.hpp"
 #include "gzn/fnd/ref-count.hpp"
 
 namespace gzn::fnd {
+
+#if defined(GZN_DEBUG)
+
+template<class T>
+struct not_null final {
+  gzn_static_assert(
+    not std::is_null_pointer_v<T>,
+    "not_null is being created with nullptr"
+  );
+
+  using pointer         = std::add_pointer_t<T>;
+  using reference       = std::add_lvalue_reference_t<T>;
+  using const_pointer   = std::add_pointer_t<std::add_const_t<T>>;
+  using const_reference = std::add_lvalue_reference_t<std::add_const_t<T>>;
+
+  pointer ptr;
+
+  constexpr explicit not_null(pointer _ptr) noexcept
+    : ptr{ _ptr } {
+    gzn_assertion(ptr == nullptr, "Attempt to assign nullptr to not_null");
+  }
+
+  ~not_null()                               = default;
+
+  constexpr not_null(not_null const &other) = default;
+
+  constexpr not_null(not_null &&other) noexcept
+    : ptr{ other.ptr } {}
+
+  constexpr auto operator=(not_null const &other) -> not_null & = default;
+
+  constexpr auto operator=(not_null &&other) noexcept -> not_null & {
+    ptr = other.ptr;
+    return *this;
+  }
+
+  [[nodiscard]] constexpr operator pointer() noexcept { return ptr; }
+
+  [[nodiscard]] constexpr operator const_pointer() const noexcept {
+    return ptr;
+  }
+
+  template<class Ptr>
+    requires std::is_pointer_v<Ptr>
+  [[nodiscard]] constexpr operator Ptr() noexcept {
+    return static_cast<Ptr>(ptr);
+  }
+
+  template<class Ptr>
+    requires std::is_pointer_v<Ptr> and
+             std::is_const_v<std::remove_pointer_t<Ptr>>
+  [[nodiscard]] constexpr operator Ptr() const noexcept {
+    return static_cast<Ptr>(ptr);
+  }
+
+  [[nodiscard]] constexpr auto operator*(this auto &&self) noexcept {
+    return *self.ptr;
+  }
+
+  [[nodiscard]] constexpr auto operator->(this auto &&self) noexcept {
+    return self.ptr;
+  }
+
+  template<class Member>
+  [[nodiscard]] constexpr auto operator->*(
+    this auto &&self,
+    Member      member
+  ) noexcept {
+    return self.ptr->*member;
+  }
+};
+
+#else
+
+template<class T>
+using not_null = std::add_pointer_t<T>;
+
+#endif // defined(GZN_DEBUG)
 
 /*
 

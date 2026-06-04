@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <iterator>
+#include <string_view>
 
 #include "gzn/fnd/types.hpp"
 
@@ -10,6 +11,11 @@ namespace gzn::fnd {
 class raw_data {
 public:
   using size_type = u64;
+
+  explicit constexpr raw_data(std::string_view const data) noexcept
+    : m_data{ reinterpret_cast<byte const *>(std::data(data)) }
+    , m_stride{ sizeof(decltype(data)::value_type) }
+    , m_size{ std::size(data) } {}
 
   explicit constexpr raw_data(
     byte const *const data   = nullptr,

@@ -2,7 +2,7 @@
 
 #include <expected>
 
-namespace gzn {
+namespace gzn::fnd {
 
 template<class T, class E>
 using expected = std::expected<T, E>;
@@ -10,4 +10,4 @@ using expected = std::expected<T, E>;
 template<class E>
 using unexpected = std::unexpected<E>;
 
-} // namespace gzn
+} // namespace gzn::fnd

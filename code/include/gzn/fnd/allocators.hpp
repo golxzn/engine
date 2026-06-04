@@ -103,23 +103,31 @@ public:
 
   [[nodiscard]]
   constexpr auto allocate(u32, u32) -> void * {
+    gzn_do_assertion("Allocate request for dummy allocator! Use another one!");
     return nullptr;
   }
 
   [[nodiscard]]
   constexpr auto allocate(u32, u32, u32, u32) -> void * {
+    gzn_do_assertion("Allocate request for dummy allocator! Use another one!");
     return nullptr;
   }
 
-  constexpr void deallocate(void *, u32) {}
+  constexpr void deallocate(void *, u32) {
+    gzn_do_assertion("Free request for dummy allocator! Use another one!");
+  }
 
-  constexpr void deallocate(void *, u32, u32) {}
+  constexpr void deallocate(void *, u32, u32) {
+    gzn_do_assertion("Free request for dummy allocator! Use another one!");
+  }
 
   [[nodiscard]]
   constexpr auto get_label() const noexcept -> std::string_view {
     return "dummy";
   }
 };
+
+static dummy_allocator g_dummy_alloc{};
 
 class base_allocator {
 public:

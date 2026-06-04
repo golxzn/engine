@@ -1,279 +1,195 @@
 #pragma once
 
-#include <bit>
-
 #include "gzn/fnd/allocators.hpp"
 #include "gzn/fnd/assert.hpp"
-#include "gzn/fnd/bits.hpp"
+#include "gzn/fnd/containers/span.hpp"
 #include "gzn/fnd/definitions.hpp"
+#include "gzn/fnd/owner.hpp"
+#include "gzn/fnd/utility.hpp"
 
 namespace gzn::fnd {
 
-template<class T>
-class pool;
-
-#pragma pack(push, 1)
-
-struct alignas(u8) gen_counter {
-  static constexpr u32 alive_mask{ 1 };
-
-  u8 value{};
-
-  gzn_inline constexpr void next_gen() noexcept { value += 2; }
-
-  [[nodiscard]]
-  gzn_inline constexpr auto is_alive() const noexcept {
-    return static_cast<bool>(value & alive_mask);
-  }
-
-  gzn_inline constexpr void set_alive() noexcept { value |= alive_mask; }
-
-  gzn_inline constexpr void set_dead() noexcept { value &= ~alive_mask; }
-
-  gzn_inline constexpr void set_dead_and_next_gen() noexcept {
-    value &= ~alive_mask;
-    value += 2;
-  }
+using handle_index_type = u16;
+inline constexpr auto MAX_POOL_SIZE{
+  (std::numeric_limits<handle_index_type>::max)()
 };
 
-#pragma pack(pop)
+struct alignas(sizeof(handle_index_type) * 2) store_key {
+  handle_index_type location{};
+  handle_index_type generation{};
+};
+
+[[nodiscard]]
+constexpr auto operator==(store_key const lhv, store_key const rhv) noexcept {
+  return lhv.location == rhv.location && lhv.generation == rhv.generation;
+}
+
+inline constexpr store_key null_key{
+  .location   = 0u,
+  .generation = 0u,
+};
+
+template<class T>
+class pool_base;
 
 template<class T>
 struct handle {
+  using pool_type  = pool_base<T>;
   using value_type = T;
 
-  pool<T>    *pool{ nullptr };
-  usize       location{ 0 };
-  gen_counter generation{ 0 };
+  ref<pool_type> pool{};
+  store_key      key{ null_key };
 
   [[nodiscard]]
-  constexpr auto is_actual() const noexcept -> bool;
+  constexpr auto has_value() const noexcept -> bool;
 
   [[nodiscard]]
   constexpr auto value(this auto &&self) noexcept -> value_type *;
 };
 
 template<class T>
-class non_owning_pool {
+class pool_base {
   static constexpr bool T_nothrow_move{
     std::is_nothrow_move_constructible_v<T>
   };
 
 public:
-  using value_type            = T;
-  using handle_type           = handle<T>;
-  using destructor            = void (*)(void *, void *, usize);
+  using size_type       = handle_index_type;
+  using value_type      = T;
+  using handle_type     = handle<T>;
 
-  constexpr non_owning_pool() = default;
+  constexpr pool_base() = default;
 
-  explicit non_owning_pool(byte *storage, usize const elements_count) noexcept
-    : count{ elements_count }
-    , storage{ storage }
-    , generations{ reinterpret_cast<gen_counter *>(storage) }
-    , data{ reinterpret_cast<T *>(storage) + count * sizeof(gen_counter) } {
-    gzn_assertion(count == 0, "pool should not be empty");
-    std::fill_n(generations, count * sizeof(gen_counter), gen_counter{});
+  template<class Type>
+  static constexpr auto bytes(size_type count) noexcept -> size_type {
+    return sizeof(Type) * count;
   }
 
-  non_owning_pool(non_owning_pool const &)                         = default;
-  non_owning_pool(non_owning_pool &&) noexcept                     = default;
-  auto operator=(non_owning_pool const &) -> non_owning_pool &     = default;
-  auto operator=(non_owning_pool &&) noexcept -> non_owning_pool & = default;
+  explicit pool_base(fnd::span<byte> storage, size_type count) noexcept
+    : storage{ storage }
+    , values{ util::data(
+        storage.subrange_morph<value_type>(0, bytes<value_type>(count))
+      ) }
+    , generations{ util::data(storage.subrange_morph<handle_index_type>(
+        bytes<value_type>(count),
+        bytes<handle_index_type>(count)
+      )) }
+    , occupations{ util::data(storage.subrange_morph<bool>(
+        bytes<value_type>(count) + bytes<handle_index_type>(count),
+        bytes<bool>(count)
+      )) } {
+    std::memset(occupations, false, bytes<bool>(count));
+  }
+
+  pool_base(pool_base const &)                         = default;
+  pool_base(pool_base &&) noexcept                     = default;
+  auto operator=(pool_base const &) -> pool_base &     = default;
+  auto operator=(pool_base &&) noexcept -> pool_base & = default;
 
   [[nodiscard]]
   constexpr auto is_valid() const noexcept {
-    return storage != nullptr;
+    return std::empty(storage);
   }
 
   [[nodiscard]]
   constexpr auto elements_count() const noexcept {
-    return count;
+    return util::size(storage);
   }
 
   [[nodiscard]]
-  constexpr auto bytes_count() const noexcept {
-    return get_size_for(count);
-  }
-
-  [[nodiscard]]
-  constexpr auto at(this auto &&self, usize const index) noexcept {
-    gzn_assertion(index > self.count, "Index is out of range");
-    return handle_type{ .pool       = &self,
-                        .location   = index,
-                        .generation = self.generations[index] };
-  }
-
-  [[nodiscard]]
-  constexpr auto value_at(this auto &&self, usize const index) noexcept {
-    gzn_assertion(index > self.count, "Index is out of range");
-    return self.generations[index];
-  }
-
-  [[nodiscard]]
-  constexpr auto generation_at(this auto &&self, usize const index) noexcept {
-    gzn_assertion(index > self.count, "Index is out of range");
-    return self.generations[index];
-  }
-
-  constexpr auto try_insert_unsafe(
-    value_type  value,
-    usize const index
-  ) noexcept(T_nothrow_move) -> bool {
-    gzn_assertion(index > count, "Index is out of range");
-    if (auto gen{ generations + index }; gen->is_alive()) {
-      std::construct_at(data + index, std::move(value));
-      gen->set_alive();
-      return true;
+  constexpr auto get(this auto &&self, store_key const key) noexcept {
+    gzn_assertion(
+      key.location >= self.elements_count(), "Key location is out of range!"
+    );
+    if (key.generation == self.generations[key.location]) {
+      return self.values[key.location];
     }
-    return false;
+    return nullptr;
   }
 
-  gzn_inline constexpr auto try_append(value_type value) noexcept(
-    T_nothrow_move
-  ) -> bool {
-    auto const status{ try_insert_unsafe(std::move(value), top) };
-    top += static_cast<usize>(status);
-    return status;
-  }
+  constexpr void remove(store_key const key) noexcept {
+    if (key == null_key) { return; }
 
-  constexpr auto remove_at(usize const index) -> bool {
-    gzn_assertion(index > count, "Index is out of range");
-    if (auto gen{ generations + index }; gen->is_alive()) {
-      if constexpr (!std::is_trivially_destructible_v<value_type>) {
-        std::destroy_at(data + index);
-      }
-      gen->set_dead_and_next_gen();
-      return true;
+    gzn_assertion(
+      key.location >= elements_count(), "Key location is out of range!"
+    );
+    if (key.generation != generations[key.location]) { return; }
+
+    if constexpr (!std::is_trivially_destructible_v<value_type>) {
+      std::destroy_at(values + key.location);
     }
-    return false;
+    ++generations[key.location];
+    occupations[key.location] = false;
+  }
+
+  [[nodiscard]]
+  constexpr auto add(value_type &&value) noexcept(T_nothrow_move)
+    -> store_key {
+    auto const count{ elements_count() };
+    for (size_type idx{ 1 }; idx < count; ++idx) {
+      if (occupations[idx]) { continue; }
+
+      values[idx] = std::move(value);
+      ++generations[idx];
+      occupations[idx] = true;
+      return store_key{ .location = idx, .generation = 1u };
+    }
+    return null_key;
   }
 
   [[nodiscard]]
   constexpr static auto get_size_for(usize const count) noexcept {
-    return count * sizeof(T) + count * sizeof(gen_counter);
+    return count * sizeof(value_type) + count * sizeof(handle_index_type) +
+           count * sizeof(bool);
   }
 
-
-private:
-  usize        count{};
-  usize        top{};
-  byte        *storage{ nullptr };
-  gen_counter *generations{ nullptr };
-  value_type  *data{ nullptr };
+protected:
+  fnd::span<byte>    storage{};
+  value_type        *values{};
+  handle_index_type *generations{};
+  bool              *occupations{};
 };
 
 template<class T>
-class pool {
+class non_owning_pool {};
+
+template<class T>
+class owning_pool : public pool_base<T> {
   static constexpr bool T_nothrow_move{
     std::is_nothrow_move_constructible_v<T>
   };
 
 public:
-  using value_type  = T;
-  using handle_type = handle<T>;
-  using destructor  = void (*)(void *, void *, usize);
+  using super             = pool_base<T>;
+  using size_type         = typename super::size_type;
+  using value_type        = typename super::value_type;
+  using handle_type       = typename super::handle_type;
+  using destructor        = void (*)(void *, void *, usize);
 
-  constexpr pool()  = default;
-
-  explicit pool(void *storage, usize const elements_count) noexcept
-    : count{ elements_count }
-    , storage{ storage }
-    , generations{ reinterpret_cast<gen_counter *>(storage) }
-    , data{ reinterpret_cast<T *>(storage) + count * sizeof(gen_counter) } {
-    gzn_assertion(count == 0, "pool should not be empty");
-    gzn_assertion(
-      !std::has_single_bit(elements_count),
-      "Pool size must be power of 2. In Release mode will be rounded to "
-      "closest lower power of 2"
-    );
-    std::fill_n(generations, count * sizeof(gen_counter), gen_counter{});
-  }
+  constexpr owning_pool() = default;
 
   template<fnd::util::allocator_type Alloc>
-  explicit pool(Alloc &alloc, usize const count)
-    : pool{ alloc.allocate(get_size_for(count)), count }
+  explicit owning_pool(Alloc &alloc, usize const count)
+    : super{ alloc.allocate(super::get_size_for(count)), count }
     , alloc{ &alloc }
-    , destruct_storage{ make_destructor<Alloc, gen_counter>() } {}
+    , destruct_storage{ make_destructor<Alloc, byte>() } {}
 
-  ~pool() { destruct_storage(alloc, storage, get_size_for(count)); }
-
-  pool(pool const &)                         = delete;
-  pool(pool &&) noexcept                     = delete;
-  auto operator=(pool const &) -> pool &     = delete;
-  auto operator=(pool &&) noexcept -> pool & = delete;
-
-  [[nodiscard]]
-  constexpr auto is_valid() const noexcept {
-    return storage != nullptr;
-  }
-
-  [[nodiscard]]
-  constexpr auto elements_count() const noexcept {
-    return count;
-  }
-
-  [[nodiscard]]
-  constexpr auto bytes_count() const noexcept {
-    return get_size_for(count);
-  }
-
-  [[nodiscard]]
-  constexpr auto at(this auto &&self, usize const index) noexcept {
-    gzn_assertion(index > self.count, "Index is out of range");
-    return handle_type{ .pool       = &self,
-                        .location   = index,
-                        .generation = self.generations[index] };
-  }
-
-  [[nodiscard]]
-  constexpr auto value_at(this auto &&self, usize const index) noexcept {
-    gzn_assertion(index > self.count, "Index is out of range");
-    return self.generations[index];
-  }
-
-  [[nodiscard]]
-  constexpr auto generation_at(this auto &&self, usize const index) noexcept {
-    gzn_assertion(index > self.count, "Index is out of range");
-    return self.generations[index];
-  }
-
-  constexpr auto try_insert_unsafe(
-    value_type  value,
-    usize const index
-  ) noexcept(T_nothrow_move) -> bool {
-    gzn_assertion(index > count, "Index is out of range");
-    if (auto gen{ generations + index }; gen->is_alive()) {
-      std::construct_at(data + index, std::move(value));
-      gen->set_alive();
-      return true;
-    }
-    return false;
-  }
-
-  gzn_inline constexpr auto try_append(value_type value) noexcept(
-    T_nothrow_move
-  ) -> bool {
-    auto const status{ try_insert_unsafe(std::move(value), top) };
-    top += static_cast<usize>(status);
-    return status;
-  }
-
-  constexpr auto remove_at(usize const index) -> bool {
-    gzn_assertion(index > count, "Index is out of range");
-    if (auto gen{ generations + index }; gen->is_alive()) {
-      if constexpr (!std::is_trivially_destructible_v<value_type>) {
-        std::destroy_at(data + index);
+  ~owning_pool() {
+    if constexpr (!std::is_trivially_destructible_v<value_type>) {
+      auto const count{ super::elements_count() };
+      for (size_type idx{ 1 }; idx < count; ++idx) {
+        if (super::occupations[idx]) { std::destroy_at(super::values + idx); }
       }
-      gen->set_dead_and_next_gen();
-      return true;
     }
-    return false;
+    destruct_storage(
+      alloc, util::data(super::storage), util::size(super::storage)
+    );
   }
 
-  [[nodiscard]]
-  constexpr static auto get_size_for(usize const count) noexcept {
-    return count * sizeof(T) + count * sizeof(gen_counter);
-  }
+  owning_pool(owning_pool const &)                         = delete;
+  owning_pool(owning_pool &&) noexcept                     = delete;
+  auto operator=(owning_pool const &) -> owning_pool &     = delete;
+  auto operator=(owning_pool &&) noexcept -> owning_pool & = delete;
 
 private:
   template<fnd::util::allocator_type Alloc, class U>
@@ -284,23 +200,19 @@ private:
     return fn;
   }
 
-  usize        count{};
-  usize        top{};
-  void        *storage{ nullptr };
-  gen_counter *generations{ nullptr };
-  value_type  *data{ nullptr };
-  void        *alloc{ nullptr };
-  destructor   destruct_storage{ [](auto, auto, auto) {} };
+  void      *alloc{ nullptr };
+  destructor destruct_storage{ [](auto, auto, auto) {} };
 };
 
 template<class T>
-constexpr auto handle<T>::is_actual() const noexcept -> bool {
-  return pool != nullptr && generation == pool->generation_at(location);
+constexpr auto handle<T>::has_value() const noexcept -> bool {
+
+  return pool.is_alive() && pool->contains(key);
 }
 
 template<class T>
 constexpr auto handle<T>::value(this auto &&self) noexcept -> value_type * {
-  return self.is_actual() ? self.pool->value_at(self.location) : nullptr;
+  return self.has_value() ? self.pool->get(self.key) : nullptr;
 }
 
 } // namespace gzn::fnd

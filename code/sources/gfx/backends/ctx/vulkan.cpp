@@ -2,10 +2,15 @@
 
 #include <algorithm>
 
-#include "gzn/fnd/containers/dynamic-array.hpp"
-#include "gzn/fnd/util/unsafe_any_ref.hpp"
-#include "gzn/gfx/context.hpp"
-#include "gzn/gfx/gpu-info.hpp"
+#  include <algorithm>
+
+#  include <glm/vec3.hpp>
+#  include <vulkan/vulkan_wayland.h>
+
+#  include "gzn/fnd/containers/dynamic-array.hpp"
+#  include "gzn/fnd/util/unsafe-any-ref.hpp"
+#  include "gzn/gfx/context.hpp"
+#  include "gzn/gfx/gpu-info.hpp"
 
 namespace gzn::gfx::backends::ctx {
 
