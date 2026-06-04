@@ -17,7 +17,7 @@ add_subdirectory(gzn-engine)
 target_link_libraries(your-target PRIVATE gzn::engine)
 ```
 
-## `/Simple Usage/` No time to deal with complex rendering
+## `/High Level/` No time to deal with complex rendering
 
 ```cpp
 #include <gzn/foundation>
@@ -28,22 +28,31 @@ int main() {
   using namespace gzn;
   fnd::base_allocator alloc{};
 
-  auto view{
-    app::view::make<fnd::stack_owner>(alloc, { .size{ 1920, 1080 } })
-  };
+  auto view{ app::view::make<fnd::stack_owner>(alloc, {
+    .title{ "Triangle test" },
+    .size{ 1940u, 1080u }
+  }) };
   if (!view.is_alive()) { return EXIT_FAILURE; }
 
-  auto render{ gfx::context::make<fnd::stack_owner>(alloc, gfx::context_info{
-    .backend = gfx::backend_type::opengl,
-    .make_surface{ view->get_surface_proxy_generator(alloc) }
+  auto constexpr gfx_backend{ gfx::context::select_available(
+    gfx::backend_type::vulkan
+  ) };
+  auto ctx{ gfx::context::make(gfx_storage, {
+    .backend = gfx_backend,
+    .surface{ view->make_surface_proxy(gfx_backend) },
   }) };
-  if (!render.is_alive()) { return EXIT_FAILURE; }
+  if (!ctx.is_valid()) {
+    return EXIT_FAILURE;
+  }
+  gfx::cmd::init(ctx);
 
-  gfx::text_draw_info const hello_world{
+  auto hl{ gfx::high_level::make(ctx) };
+
+  auto const hello_world{ hl->bake(gfx::hl::draw_info_text{
     .text{ "Hello, World!" },
-    .pos{ 100.f, 100.f },
-    .color = 0xFD'9D'66'FF
-  };
+    .pos{ view->get_size() / 2 },
+    .color = 0xFD'9D'66'FF,
+  }) };
 
   app::event event{};
   for (bool running{ true }; running;) {
@@ -56,19 +65,17 @@ int main() {
       }
     }
 
-    gfx::cmd::start(*render, 0x27'27'2E'FF);
-    gfx::cmd::draw(*render, hello_world);
-    gfx::cmd::submit(*render);
-
-    gfx::cmd::present(*render);
+    gfx::cmd::begin_frame(ctx);
+    gfx::cmd::submit(hello_world);
+    gfx::cmd::end_frame(ctx);
   }
 }
 ```
 
-## `/Explicit Usage/` Nah. I'm a professional
+## `/Low  Level/` Nah. I'm a professional
 
 It's too complex and big. I afraid it will be scary to see something like that
-in the main readme file. So, welcome to the [examples directory][examples-dir]
+in the main readme file. So, welcome to the [examples directory][examples-dir].
 
 
 [cpp-badge]: https://img.shields.io/badge/C%2B%2B23-%2300599C?style=flat&logo=cplusplus
