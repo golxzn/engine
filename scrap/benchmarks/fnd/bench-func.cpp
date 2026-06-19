@@ -1,5 +1,6 @@
 #include <functional>
 
+#include <gzn/fnd/allocators.hpp>
 #include <gzn/fnd/func.hpp>
 #include <nanobench.h>
 
@@ -29,8 +30,9 @@ int main() {
 
   int const param{ std::rand() };
 
-  nanobench::Bench                bench{};
-  static gzn::fnd::base_allocator alloc{};
+  nanobench::Bench bench{};
+  bench.minEpochIterations(300'000);
+  static gzn::fnd::heap_allocator alloc{};
 
   bench.title("functor creation");
   bench.run("[gzn] small function creation", [] {
@@ -49,6 +51,7 @@ int main() {
     return std::function<int(int)>{ [](int x) { return x; } };
   });
 
+  bench.minEpochIterations(15'000);
   func_test<payload> heavy_dude{ payload{} };
   bench.run("[gzn] huge lambda creation", [heavy_dude] {
     return fnd::move_only_func<int(int)>{ alloc,
@@ -61,6 +64,7 @@ int main() {
 
 
   bench.title("function calling");
+  bench.minEpochIterations(3256306);
   bench.run(
     "[gzn] lambda | no capture",
     [param,

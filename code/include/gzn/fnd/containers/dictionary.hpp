@@ -17,7 +17,7 @@ struct record {
 template<
   class Key,
   class Value,
-  util::allocator_type Allocator = base_allocator>
+  util::allocator_type Allocator = heap_allocator>
 class hash_map {
 public:
   using record_type    = record<Key, Value>;

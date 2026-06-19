@@ -34,6 +34,12 @@ public:
     return m_value;
   }
 
+  template<std::unsigned_integral Other>
+  [[nodiscard]]
+  gzn_inline constexpr auto value() const noexcept -> Other {
+    return static_cast<Other>(m_value);
+  }
+
   gzn_inline constexpr operator T() const noexcept { return m_value; }
 
   gzn_inline constexpr auto operator==(clamped const &o) const noexcept

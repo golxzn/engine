@@ -3,8 +3,25 @@
 #include <bit>
 #include <concepts>
 
+#include "gzn/fnd/types.hpp"
+
 namespace gzn::fnd::bits {
 
+[[nodiscard]]
+constexpr auto get_shift_from_power_of_2(
+  std::unsigned_integral auto const value
+) -> ssize {
+  using value_type = std::remove_cvref_t<decltype(value)>;
+  constexpr auto bits_count{ static_cast<ssize>(sizeof(value_type) * 8u) };
+
+  for (ssize idx{ bits_count }; idx != 0; --idx) {
+    if (value == static_cast<value_type>(1u << idx)) { return idx; }
+  }
+
+  return -1;
+}
+
+[[nodiscard]]
 constexpr auto closest_upper_power_of_two(
   std::unsigned_integral auto value
 ) noexcept {
@@ -19,6 +36,7 @@ constexpr auto closest_upper_power_of_two(
   return value;
 }
 
+[[nodiscard]]
 constexpr auto closest_lower_power_of_two(
   std::unsigned_integral auto value
 ) noexcept {

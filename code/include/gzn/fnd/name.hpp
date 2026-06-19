@@ -2,7 +2,6 @@
 
 #include <algorithm>
 #include <array>
-#include <span>
 
 #include "gzn/fnd/hash.hpp"
 #include "gzn/fnd/internal/str-utils.hpp"

@@ -1,4 +1,4 @@
-#include <memory>
+#include <print>
 #include <string>
 #include <vector>
 
@@ -90,11 +90,22 @@ void testing(
 }
 
 TEST_CASE("test: gzn::stack_owner", "[fnd][owner]") {
-  gzn::fnd::stack_arena_allocator<1024> alloc{};
-  testing<gzn::fnd::stack_owner<game::player>>(alloc, "stack_owner");
+  using namespace gzn;
+
+  // struct Prefix {
+  //   explicit Prefix(fnd::memory_block_size size, std::source_location loc) {
+  //     std::println("Allocating [{}/{}]", size.bytes_count, size.alignment);
+  //   }
+  //
+  // };
+  //
+  // fnd::affix_allocator<fnd::in_stack_allocator<1_KiB>, Prefix> alloc{};
+  fnd::in_stack_allocator<1_KiB> alloc{};
+  testing<fnd::stack_owner<game::player>>(alloc, "stack_owner");
 } // TEST_CASE("common", "[raw-data]")
 
 TEST_CASE("test: gzn::heap_owner", "[fnd][owner]") {
-  gzn::fnd::base_allocator alloc{};
-  testing<gzn::fnd::heap_owner<game::player>>(alloc, "stack_owner");
+  using namespace gzn;
+  fnd::heap_allocator alloc{};
+  testing<fnd::heap_owner<game::player>>(alloc, "heap_owner");
 } // TEST_CASE("common", "[raw-data]")

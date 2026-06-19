@@ -36,7 +36,7 @@ void main() {
 int main() {
   using namespace gzn;
 
-  fnd::stack_arena_allocator<512> view_alloc{};
+  fnd::in_stack_allocator<512> view_alloc{};
 
   app::view_info const view_info{
     .title = "vk test",
@@ -48,7 +48,7 @@ int main() {
     return EXIT_FAILURE;
   }
 
-  fnd::base_allocator gfx_alloc{};
+  fnd::heap_allocator gfx_alloc{};
   auto constexpr backend_type{ gfx::backend_type::opengl };
   gfx::context_info ctx_info{
     .backend = backend_type,

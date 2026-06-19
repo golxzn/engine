@@ -2,7 +2,7 @@
 
 #include <cstring>
 
-#include "gzn/fnd/pointers.hpp"
+#include "gzn/fnd/allocators/allocators-common.hpp"
 #include "gzn/fnd/utility.hpp"
 
 namespace gzn::fnd::containers {
@@ -13,18 +13,55 @@ template<class T>
 using pure_pointer_t = std::add_pointer_t<std::remove_all_extents_t<T>>;
 
 template<class T, class Ptr = pure_pointer_t<T>>
-[[nodiscard]]
-auto allocate(util::allocator_type auto &alloc, u32 count) -> Ptr {
+[[nodiscard]] auto allocate(
+  util::allocator_type auto &alloc,
+  usize const                count,
+  std::source_location const loc = std::source_location::current()
+) -> Ptr {
   if (count == 0) { return nullptr; }
-  u32 constexpr offset{}, flags{};
-  return static_cast<Ptr>(
-    alloc.allocate(count * sizeof(T), alignof(T), offset, flags)
-  );
+
+  return alloc.allocate({ count * sizeof(T), alignof(T) }, loc)
+    .template as<T>();
+}
+
+/*
+template<class T, class Ptr = pure_pointer_t<T>>
+[[nodiscard]] auto grow(
+  util::allocator_type auto &alloc,
+  Ptr                        object,
+  usize const                count,
+  usize const                additional_count,
+  std::source_location const loc = std::source_location::current()
+) -> bool {
+  if constexpr (std::is_trivially_copyable_v<T>) {
+    memory_block block{
+      .data = object,
+      .size{ .bytes_count = sizeof(T) * count, .alignment = alignof(T) },
+    };
+    return alloc.expand(block, sizeof(T) * additional_count, loc);
+  } else {
+  }
+}
+*/
+
+template<class T, class Ptr = pure_pointer_t<T>>
+void deallocate(
+  util::allocator_type auto &alloc,
+  Ptr                        object,
+  usize const                count,
+  std::source_location const loc = std::source_location::current()
+) {
+  if (count == 0) { return; }
+
+  memory_block block{
+    .address = object,
+    .size{ .bytes_count = sizeof(T) * count, .alignment = alignof(T) },
+  };
+  alloc.deallocate(block, loc);
 }
 
 template<class T, class Ptr = pure_pointer_t<T>>
-[[nodiscard]]
-auto allocate_move(
+[[nodiscard]] auto allocate_move(
   util::allocator_type auto &alloc,
   Ptr                        from,
   Ptr                        to,

@@ -9,7 +9,7 @@
 #include <functional>
 #include <utility>
 
-#include "gzn/fnd/allocators.hpp"
+#include "gzn/fnd/allocators/allocators-common.hpp"
 
 namespace gzn::fnd::func_internal {
 
@@ -127,9 +127,9 @@ struct vtable final {
         gzn_static_assert(std::is_copy_constructible_v<T>);
       }
       if constexpr (!InPlace) {
-        storage.ptr = static_cast<Allocator *>(alloc)->allocate(
-          sizeof(T), alignof(T), 0u, 0u
-        );
+        storage.ptr = static_cast<Allocator *>(alloc)
+                        ->allocate(util::size_of<T>())
+                        .address;
         new (storage.ptr) T{ FUNC_FORWARD(Args, args)... };
       } else {
         new (storage.sbo) T{ FUNC_FORWARD(Args, args)... };
@@ -144,9 +144,9 @@ struct vtable final {
       if constexpr (!Copyable) { std::unreachable(); }
 
       if constexpr (!InPlace) {
-        to->ptr = static_cast<Allocator *>(alloc)->allocate(
-          sizeof(T), alignof(T), 0u, 0u
-        );
+        to->ptr = static_cast<Allocator *>(alloc)
+                    ->allocate(util::size_of<T>())
+                    .address;
         new (to->ptr) T{ *reinterpret_cast<T const *>(from->ptr) };
       } else {
         new (to->sbo) T{ *reinterpret_cast<T const *>(from->ptr) };
@@ -159,9 +159,9 @@ struct vtable final {
     ) {
       reinterpret_cast<T *>(target->ptr)->~T();
       if constexpr (!InPlace) {
-        if (alloc) {
-          static_cast<Allocator *>(alloc)->deallocate(target->ptr, sizeof(T));
-        }
+        if (!alloc) { return; }
+        auto block{ util::block_of(static_cast<T *>(target->ptr)) };
+        static_cast<Allocator *>(alloc)->deallocate(block);
       }
     }
 
@@ -170,6 +170,7 @@ struct vtable final {
       std::is_nothrow_move_constructible_v<T> &&
       std::is_nothrow_destructible_v<T>
     ) {
+
       if constexpr (InPlace) {
         new (to->sbo) T{ FUNC_MOVE(*reinterpret_cast<T *>(from->sbo)) };
         reinterpret_cast<T *>(from->sbo)->~T();

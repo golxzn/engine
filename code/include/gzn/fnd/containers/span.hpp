@@ -6,6 +6,7 @@
 
 namespace gzn::fnd {
 
+/** @todo make same trick as std::span with std::dynamic_extent for name.hpp */
 template<class T>
 class span {
 public:
@@ -28,8 +29,12 @@ public:
   constexpr explicit span(c_array<value_type, N> &&arr) noexcept
     : span{ arr, N } {}
 
+  template<size_type N>
+  constexpr explicit span(std::array<value_type, N> &&arr) noexcept
+    : span{ std::data(arr), N } {}
+
   template<
-    util::allocator_type Allocator = base_allocator,
+    util::allocator_type Allocator = heap_allocator,
     class Twicks                   = dynamic_array_twicks<value_type>>
   constexpr explicit span(
     dynamic_array<value_type, Allocator, Twicks> &arr
@@ -127,6 +132,14 @@ public:
 
   [[nodiscard]] constexpr auto end(this auto &&self) noexcept {
     return self.array + self.count;
+  }
+
+  [[nodiscard]] constexpr auto &operator[](
+    this auto &&self,
+    size_type   index
+  ) noexcept {
+    gzn_assertion(index >= self.count, "Index out of range");
+    return self.array[index];
   }
 
 private:

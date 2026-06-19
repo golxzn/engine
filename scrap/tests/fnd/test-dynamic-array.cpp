@@ -7,7 +7,7 @@
 TEST_CASE("test: gzn::fnd::dynamic_array", "[fnd][dynamic-array]") {
   using namespace gzn;
 
-  fnd::base_allocator alloc{};
+  fnd::heap_allocator alloc{};
 
   SECTION("constructors") {
     std::array constexpr init_list{ 1.0, 2.0, 3.0 };

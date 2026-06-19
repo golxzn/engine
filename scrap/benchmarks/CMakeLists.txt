@@ -29,9 +29,9 @@ foreach(bench_file IN LISTS bench_files)
   target_link_libraries(${bench_name} PRIVATE gzn::engine nanobench)
 
   add_test(
-  NAME ${bench_name}
-  COMMAND ${bench_name}
-  WORKING_DIRECTORY ${gzn_root}/bin
+    NAME ${bench_name}
+    COMMAND ${bench_name}
+    WORKING_DIRECTORY ${gzn_root}/bin
  )
 endforeach()
 

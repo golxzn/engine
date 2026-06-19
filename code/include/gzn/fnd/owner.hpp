@@ -197,13 +197,6 @@ constexpr auto owner_base<T>::is_linked(
 }
 
 template<class T>
-[[nodiscard]] constexpr decltype(auto) make_deletion_function(
-  util::allocator_type auto &allocator
-) {
-  return [&allocator](T *ptr) { util::destroy(allocator, ptr); };
-}
-
-template<class T>
 class heap_owner final : public owner_base<T> {
 public:
   using base_class    = owner_base<T>;
@@ -212,7 +205,7 @@ public:
   using const_pointer = std::add_pointer_t<std::add_const_t<T>>;
 
   constexpr heap_owner(std::nullptr_t = nullptr) noexcept
-    : base_class{ static_cast<base_allocator *>(nullptr), nullptr } {}
+    : base_class{ static_cast<heap_allocator *>(nullptr), nullptr } {}
 
   constexpr heap_owner(heap_owner &&other) noexcept
     : base_class{ std::move(other) }
@@ -223,17 +216,16 @@ public:
     pointer                    ptr
   ) noexcept
     : base_class{ &allocator, ptr }
-    , m_deleter{ allocator, make_deletion_function<T>(allocator) } {}
+    , m_deleter{ allocator, util::make_deletion_function<T>(allocator) } {}
 
   template<class... Args>
     requires std::constructible_from<value_type, Args &&...>
   explicit heap_owner(util::allocator_type auto &allocator, Args &&...args)
-    : base_class{ &allocator,
-                  util::construct<value_type>(
-                    allocator,
-                    std::forward<Args>(args)...
-                  ) }
-    , m_deleter{ allocator, make_deletion_function<T>(allocator) } {}
+    : base_class{
+      &allocator,
+      util::construct<value_type>(allocator, std::forward<Args>(args)...)
+    }
+    , m_deleter{ allocator, util::make_deletion_function<T>(allocator) } {}
 
   constexpr ~heap_owner() { reset(); }
 
@@ -260,7 +252,7 @@ public:
   using storage_type  = std::array<std::byte, sizeof(T)>;
 
   constexpr stack_owner(std::nullptr_t = nullptr) noexcept
-    : base_class{ static_cast<base_allocator *>(nullptr), nullptr } {}
+    : base_class{ static_cast<heap_allocator *>(nullptr), nullptr } {}
 
   constexpr stack_owner(stack_owner const &) = delete;
 

@@ -50,7 +50,7 @@ static void destroySwapchain();
 int main() {
   using namespace gzn;
 
-  fnd::stack_arena_allocator<512> view_alloc{};
+  fnd::in_stack_allocator<512> view_alloc{};
 
   app::view_info const view_info{
     .title = "vk test",
@@ -62,15 +62,16 @@ int main() {
     return EXIT_FAILURE;
   }
 
-  fnd::base_allocator gfx_alloc{};
+  fnd::heap_allocator gfx_alloc{};
   auto constexpr backend_type{ gfx::backend_type::vulkan };
   auto ctx{ gfx::context::make(
     gfx_alloc,
     gfx::context_info{
       .backend = backend_type,
       .app_name{ "wayland-vulkan-testing" },
-      .surface_builder{ view->get_surface_builder(gfx_alloc, backend_type) },
+      .surface{ view->make_surface_proxy() },
       .extensions{ view->get_required_extensions() },
+      .swapchain{ .resolution = view->get_size() },
     }
   ) };
   if (!ctx.is_valid()) {
@@ -79,7 +80,7 @@ int main() {
   }
 
   auto vk{ ctx.data().as<gfx::backends::ctx::vulkan>() };
-  vulkanSurface = (VkSurfaceKHR)ctx.get_surface_proxy()->get_handle();
+  vulkanSurface = vk->surface;
   physDevice    = vk->physical_device;
   device        = vk->logical_device;
   queue         = vk->queue;
@@ -212,7 +213,7 @@ int main() {
 
     currentFrame = (currentFrame + 1) % imageCount;
 
-    gfx::cmd::present(ctx);
+    // gfx::cmd::present(ctx);
   }
 
   CHECK_VK_RESULT(vkDeviceWaitIdle(device));
@@ -259,6 +260,8 @@ static void createSwapchain() {
 
     VkSwapchainCreateInfoKHR const createInfo{
       .sType           = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR,
+      .pNext           = nullptr,
+      .flags           = 0,
       .surface         = vulkanSurface,
       .minImageCount   = imageCount,
       .imageFormat     = chosenFormat.format,

@@ -84,9 +84,10 @@ struct ref_counted_storage {
     Args &&...args
   ) noexcept(std::is_nothrow_constructible_v<value_type>)
     : value{ std::forward<Args>(args)... }
-    , destructor{ alloc, [&alloc](ref_counted_storage *me) {
-                   util::destroy(alloc, me);
-                 } } {}
+    , destructor{
+      alloc,
+      util::make_deletion_function<ref_counted_storage>(alloc),
+    } {}
 
   ~ref_counted_storage() = default;
 
@@ -108,8 +109,8 @@ constexpr auto make_ref_counted_storage(
   if (alloc == nullptr) { return nullptr; }
 
   using type = ref_counted_storage<T>;
-  if (auto memory{ util::alloc<type>(*alloc) }; memory) {
-    return new (memory) type{ *alloc, std::forward<Args>(args)... };
+  if (auto memory{ alloc->allocate(util::size_of<type>()) }; memory) {
+    return new (memory.address) type{ *alloc, std::forward<Args>(args)... };
   }
   return nullptr;
 

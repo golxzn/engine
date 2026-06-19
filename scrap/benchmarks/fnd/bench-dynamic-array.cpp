@@ -31,7 +31,7 @@ int main() {
     return growing.size() + growing.capacity();
   });
 
-  bench.run("dynamic_array grow", [alloc{ fnd::base_allocator{} }]() mutable {
+  bench.run("dynamic_array grow", [alloc{ fnd::heap_allocator{} }]() mutable {
     fnd::dynamic_array<size_t> growing{ alloc };
     for (auto const value : pushing_values) { growing.push_back(value); }
     return growing.size() + growing.capacity();

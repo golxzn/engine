@@ -1,5 +1,6 @@
 #pragma once
 
+#include "gzn/fnd/allocators/heap-allocator.hpp"
 #include "gzn/fnd/containers/common.hpp"
 
 namespace gzn::fnd {
@@ -23,7 +24,7 @@ struct dynamic_array_twicks {
 
 template<
   class T,
-  util::allocator_type Allocator = base_allocator,
+  util::allocator_type Allocator = heap_allocator,
   class Twicks                   = dynamic_array_twicks<T>>
 class dynamic_array {
   gzn_static_assert(
@@ -252,7 +253,7 @@ public:
       auto const last{ end() };
       for (auto cur{ begin() }; cur != last; ++cur) { cur->~value_type(); }
     }
-    m_allocator->deallocate(m_data, m_capacity, alignof(value_type));
+    containers::mem::deallocate<value_type>(*m_allocator, m_data, m_capacity);
     m_capacity = 0;
     m_size     = 0;
     m_data     = nullptr;
@@ -265,7 +266,7 @@ public:
       auto new_values{ containers::mem::allocate_move<value_type>(
         *m_allocator, begin(), end(), count
       ) };
-      m_allocator->deallocate(m_data, m_capacity, alignof(value_type));
+      containers::mem::deallocate<value_type>(*m_allocator, m_data, m_capacity);
       m_data = new_values;
     } else {
       m_data = containers::mem::allocate<value_type>(*m_allocator, count);
@@ -299,7 +300,7 @@ public:
     auto raw{ containers::mem::allocate_move<value_type>(
       *m_allocator, begin(), end(), m_size
     ) };
-    m_allocator->deallocate(m_data, m_capacity, alignof(value_type));
+    containers::mem::deallocate<value_type>(*m_allocator, m_data, m_capacity);
     m_data     = raw;
     m_capacity = m_size;
     return m_size;
@@ -346,13 +347,8 @@ public:
   }
 
   [[nodiscard]]
-  constexpr auto get_allocator() noexcept -> allocator_type & {
-    return m_allocator;
-  }
-
-  [[nodiscard]]
-  constexpr auto get_allocator() const noexcept -> allocator_type const & {
-    return m_allocator;
+  constexpr auto get_allocator(this auto &&self) noexcept {
+    return self.m_allocator;
   }
 
   [[nodiscard]]
@@ -362,23 +358,13 @@ public:
   }
 
   [[nodiscard]]
-  constexpr auto begin() noexcept -> iterator {
-    return m_data;
+  constexpr auto begin(this auto &&self) noexcept -> iterator {
+    return self.m_data;
   }
 
   [[nodiscard]]
-  constexpr auto end() noexcept -> iterator {
-    return m_data + m_size;
-  }
-
-  [[nodiscard]]
-  constexpr auto begin() const noexcept -> const_iterator {
-    return m_data;
-  }
-
-  [[nodiscard]]
-  constexpr auto end() const noexcept -> const_iterator {
-    return m_data + m_size;
+  constexpr auto end(this auto &&self) noexcept -> iterator {
+    return self.m_data + self.m_size;
   }
 
 private:

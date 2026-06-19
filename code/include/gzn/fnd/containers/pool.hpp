@@ -30,11 +30,11 @@ inline constexpr store_key null_key{
 };
 
 template<class T>
-class pool_base;
+class pool;
 
 template<class T>
 struct handle {
-  using pool_type  = pool_base<T>;
+  using pool_type  = pool<T>;
   using value_type = T;
 
   ref<pool_type> pool{};
@@ -48,7 +48,7 @@ struct handle {
 };
 
 template<class T>
-class pool_base {
+class pool {
   static constexpr bool T_nothrow_move{
     std::is_nothrow_move_constructible_v<T>
   };
@@ -58,14 +58,14 @@ public:
   using value_type      = T;
   using handle_type     = handle<T>;
 
-  constexpr pool_base() = default;
+  constexpr pool() = default;
 
   template<class Type>
   static constexpr auto bytes(size_type count) noexcept -> size_type {
     return sizeof(Type) * count;
   }
 
-  explicit pool_base(fnd::span<byte> storage, size_type count) noexcept
+  explicit pool(fnd::span<byte> storage, size_type count) noexcept
     : storage{ storage }
     , values{ util::data(
         storage.subrange_morph<value_type>(0, bytes<value_type>(count))
@@ -81,10 +81,10 @@ public:
     std::memset(occupations, false, bytes<bool>(count));
   }
 
-  pool_base(pool_base const &)                         = default;
-  pool_base(pool_base &&) noexcept                     = default;
-  auto operator=(pool_base const &) -> pool_base &     = default;
-  auto operator=(pool_base &&) noexcept -> pool_base & = default;
+  pool(pool const &)                         = default;
+  pool(pool &&) noexcept                     = default;
+  auto operator=(pool const &) -> pool &     = default;
+  auto operator=(pool &&) noexcept -> pool & = default;
 
   [[nodiscard]]
   constexpr auto is_valid() const noexcept {
@@ -150,17 +150,15 @@ protected:
   bool              *occupations{};
 };
 
-template<class T>
-class non_owning_pool {};
 
 template<class T>
-class owning_pool : public pool_base<T> {
+class owning_pool : public pool<T> {
   static constexpr bool T_nothrow_move{
     std::is_nothrow_move_constructible_v<T>
   };
 
 public:
-  using super             = pool_base<T>;
+  using super             = pool<T>;
   using size_type         = typename super::size_type;
   using value_type        = typename super::value_type;
   using handle_type       = typename super::handle_type;

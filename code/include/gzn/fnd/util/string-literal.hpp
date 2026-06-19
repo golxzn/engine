@@ -38,6 +38,11 @@ struct string_literal {
   }
 
   [[nodiscard]]
+  constexpr auto data() const noexcept {
+    return std::data(value);
+  }
+
+  [[nodiscard]]
   constexpr auto view() const noexcept -> std::string_view {
     return { std::data(value), length };
   }

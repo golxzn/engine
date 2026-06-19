@@ -325,7 +325,7 @@ struct egl_context {
 
 int main() {
   using namespace gzn;
-  fnd::base_allocator alloc{};
+  fnd::heap_allocator alloc{};
 
   auto view{
     app::view::make<fnd::stack_owner>(alloc, { .size{ 1920, 1080 } }
