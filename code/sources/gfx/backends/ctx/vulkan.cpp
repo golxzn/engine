@@ -1,6 +1,6 @@
 #include "gzn/gfx/backends/ctx/vulkan.hpp"
 
-#include <algorithm>
+#if defined(GZN_GFX_BACKEND_VULKAN)
 
 #  include <algorithm>
 
@@ -14,12 +14,12 @@
 
 namespace gzn::gfx::backends::ctx {
 
-#define GET_EXTENSION_FUNCTION(_id)                    \
-  ((PFN_##_id)(vkGetInstanceProcAddr(instance, #_id)))
+#  define GET_EXTENSION_FUNCTION(_id)                    \
+    ((PFN_##_id)(vkGetInstanceProcAddr(instance, #_id)))
 
 namespace {
 
-constexpr cstr THIS_MODULE{ "gfx::ctx::vulkan" };
+inline constexpr cstr THIS_MODULE{ "gfx::ctx::vulkan" };
 
 int glad_vk_version{};
 
@@ -34,6 +34,50 @@ vulkan g_ctx{};
 //   .pfnInternalFree       = nullptr,
 // };
 
+constexpr auto convert_format(format_type format) -> VkFormat {
+  switch (format) {
+    using enum format_type;
+    case rgb_u8  : return VK_FORMAT_R8G8B8_UINT;
+    case rgb_s8  : return VK_FORMAT_R8G8B8_SINT;
+    case rgba_u8 : return VK_FORMAT_R8G8B8A8_UINT;
+    case rgba_s8 : return VK_FORMAT_R8G8B8A8_SINT;
+
+    case rgb_f32 : return VK_FORMAT_R32G32B32_SFLOAT;
+    case rgba_f32: return VK_FORMAT_R32G32B32A32_SFLOAT;
+
+    default      : break;
+  }
+  return VK_FORMAT_UNDEFINED;
+}
+
+constexpr auto convert_extent(glm::u32vec2 size) noexcept -> VkExtent2D {
+  return VkExtent2D{ size.x, size.y };
+}
+
+constexpr auto convert_extent(glm::u32vec3 size) noexcept -> VkExtent3D {
+  return VkExtent3D{ size.x, size.y, size.z };
+}
+
+struct surface_builder {
+  auto operator()(api::wayland &back) -> VkResult {
+    VkWaylandSurfaceCreateInfoKHR const create_info{
+      .sType   = VK_STRUCTURE_TYPE_WAYLAND_SURFACE_CREATE_INFO_KHR,
+      .pNext   = nullptr,
+      .flags   = 0,
+      .display = static_cast<wl_display *>(back.wl_display),
+      .surface = static_cast<wl_surface *>(back.wl_surface),
+    };
+    return vkCreateWaylandSurfaceKHR(
+      g_ctx.instance, &create_info, g_ctx.allocator, &g_ctx.surface
+    );
+  }
+
+  auto operator()(auto &) -> VkResult {
+    gzn_do_assertion("UNIMPLEMENTED API!");
+    return VK_INCOMPLETE;
+  }
+};
+
 } // namespace
 
 struct struct_sizes {
@@ -42,17 +86,17 @@ struct struct_sizes {
 };
 
 struct gen_counter_size {
-  static constexpr auto pipeline_bytes_count{ sizeof(fnd::gen_counter) };
-  static constexpr auto buffer_bytes_count{ sizeof(fnd::gen_counter) };
+  static constexpr auto pipeline_bytes_count{ sizeof(u16) };
+  static constexpr auto buffer_bytes_count{ sizeof(u16) };
 };
 
 struct offset_accumulator {
-  std::span<byte> iter;
+  fnd::span<byte> iter;
 
   template<class T>
   constexpr auto set(usize const count) noexcept {
-    auto place{ iter.subspan(0, count) };
-    iter = iter.subspan(count);
+    auto place{ iter.subrange(0, count) };
+    iter = iter.subrange(count);
     return place;
   }
 };
@@ -107,23 +151,23 @@ auto vulkan::make_context_on(
   auto instance{ make_instance(alloc, info) };
   if (instance == VK_NULL_HANDLE) { return nullptr; }
 
-#if defined(GZN_DEBUG)
+#  if defined(GZN_DEBUG)
   auto debug_messenger{ make_debug_messenger(alloc, instance) };
-#endif // defined(GZN_DEBUG)
+#  endif // defined(GZN_DEBUG)
 
   g_ctx = vulkan{
     .allocator = alloc,
     .instance  = instance,
-#if defined(GZN_DEBUG)
+#  if defined(GZN_DEBUG)
     .debug_messenger = debug_messenger,
-#endif // defined(GZN_DEBUG),
+#  endif // defined(GZN_DEBUG),
     .log{ info.log_func },
   }; // NOLINT
   return &g_ctx;
 }
 
 auto vulkan::setup(
-  std::span<byte>     storage,
+  fnd::span<byte>     storage,
   context_info const &info,
   surface_proxy      &surface_wrapper
 ) -> bool {
@@ -142,7 +186,6 @@ auto vulkan::setup(
   }
 
   auto alloc{ g_ctx.allocator };
-  auto surface{ static_cast<VkSurfaceKHR>(surface_wrapper.get_handle()) };
 
   auto physical_device{ select_physical_device(g_ctx.instance, info) };
   if (physical_device == VK_NULL_HANDLE) {
@@ -150,38 +193,49 @@ auto vulkan::setup(
     return false;
   }
 
+  auto handle{ surface_wrapper.get_handle() };
+  // handle.visit
+  if (VK_SUCCESS != std::visit(surface_builder{}, handle)) {
+    g_ctx.log.err(
+      THIS_MODULE,
+      "Failed to construct surface! Check the handle in surface_proxy."
+    );
+    return false;
+  }
+
   auto [logical_device, queue_index]{
-    select_logical_device(alloc, physical_device, surface)
+    select_logical_device(alloc, physical_device, g_ctx.surface)
   };
+
+  gladLoaderLoadVulkan(g_ctx.instance, physical_device, logical_device);
+
   auto queue{ select_device_queue(queue_index, logical_device) };
   auto command_pool{ create_command_pool(alloc, queue_index, logical_device) };
 
-
+  using pool_size_t = fnd::handle_index_type;
   offset_accumulator off{ .iter{ storage } };
   auto const offset_pipelines{ off.set<vk_pipeline>(caps.pipelines_count) };
   auto const offset_buffers{ off.set<vk_buffer>(caps.buffers_count) };
   auto const offset_samplers{ off.set<vk_sampler>(caps.samples_count) };
 
-  gladLoaderLoadVulkan(g_ctx.instance, physical_device, logical_device);
-
   g_ctx = vulkan{
     .allocator = g_ctx.allocator,
     .instance  = g_ctx.instance,
-#if defined(GZN_DEBUG)
+#  if defined(GZN_DEBUG)
     .debug_messenger = g_ctx.debug_messenger,
-#endif  // defined(GZN_DEBUG)
+#  endif  // defined(GZN_DEBUG)
     .log{ g_ctx.log },
 
-    .surface         = surface,
+    .surface         = g_ctx.surface,
     .physical_device = physical_device,
     .logical_device  = logical_device,
     .queue           = queue,
     .command_pool    = command_pool,
 
     .storage{ storage },
-    .pipelines{ std::data(offset_pipelines), caps.pipelines_count },
-    .buffers{ std::data(offset_buffers), caps.buffers_count },
-    .samplers{ std::data(offset_samplers), caps.samples_count },
+    .pipelines{ offset_pipelines, caps.pipelines_count.value<pool_size_t>() },
+    .buffers{ offset_buffers, caps.buffers_count.value<pool_size_t>() },
+    .samplers{ offset_samplers, caps.samples_count.value<pool_size_t>() },
   };
   return true;
 }
@@ -189,14 +243,16 @@ auto vulkan::setup(
 void vulkan::destroy() {
   vkDestroyDevice(g_ctx.logical_device, g_ctx.allocator);
 
-#if defined(GZN_DEBUG)
+  vkDestroySurfaceKHR(g_ctx.instance, g_ctx.surface, g_ctx.allocator);
+
+#  if defined(GZN_DEBUG)
   {
     auto instance{ g_ctx.instance };
     GET_EXTENSION_FUNCTION(vkDestroyDebugUtilsMessengerEXT)(
       instance, g_ctx.debug_messenger, g_ctx.allocator
     );
   }
-#endif // defined(GZN_DEBUG)
+#  endif // defined(GZN_DEBUG)
 
   vkDestroyInstance(g_ctx.instance, g_ctx.allocator);
 
@@ -213,7 +269,7 @@ static auto count_matching_layers(auto const &required_layers) -> usize {
   if (result != VK_SUCCESS) { return 0; }
 
 
-  static fnd::stack_arena_allocator<sizeof(VkLayerProperties) * 25> tmp{};
+  static fnd::in_stack_allocator<sizeof(VkLayerProperties) * 25> tmp{};
   fnd::dynamic_array<VkLayerProperties, decltype(tmp)> layer_properties{
     tmp, static_cast<usize>(device_layer_count)
   };
@@ -286,7 +342,7 @@ auto vulkan::make_instance(
   return instance;
 }
 
-#if defined(GZN_DEBUG)
+#  if defined(GZN_DEBUG)
 
 static auto on_vulkan_error(
   VkDebugUtilsMessageSeverityFlagBitsEXT      severity,
@@ -354,7 +410,7 @@ auto vulkan::make_debug_messenger(
   return debug_messenger;
 }
 
-#endif // defined(GZN_DEBUG)
+#  endif // defined(GZN_DEBUG)
 
 auto vulkan::select_physical_device(
   VkInstance          instance,
@@ -406,7 +462,7 @@ auto vulkan::select_physical_device(
     };
   }
   auto const selected_idx{ info.select_gpu(
-    std::span{
+    fnd::span<gpu_info const>{
       std::data(device_infos),
       static_cast<usize>(phys_devices_count),
     }
@@ -500,5 +556,196 @@ auto vulkan::create_command_pool(
   return pool;
 }
 
+auto vulkan::create_swapchain(
+  VkAllocationCallbacks *alloc,
+  fnd::log_func         &log,
+  swapchain_info const  &info,
+  VkSurfaceKHR           surface,
+  VkPhysicalDevice       physical_device,
+  VkDevice               device
+) -> vk_swapchain {
+  /*
+  static constexpr auto convert_present_mode{ [](present_mode mode) {
+    switch (mode) {
+      using enum present_mode;
+      case immediate: return VK_PRESENT_MODE_IMMEDIATE_KHR;
+      case mailbox  : return VK_PRESENT_MODE_MAILBOX_KHR;
+      case fifo     : return VK_PRESENT_MODE_FIFO_KHR;
+    }
+    return VK_PRESENT_MODE_MAILBOX_KHR;
+  } };
+
+  u32 format_count;
+  vkGetPhysicalDeviceSurfaceFormatsKHR(
+    physical_device, surface, &format_count, nullptr
+  );
+
+  static fnd::stack_arena_allocator<sizeof(VkSurfaceFormatKHR) * 25> tmp{};
+  fnd::dynamic_array<VkSurfaceFormatKHR, decltype(tmp)>              formats{
+    tmp, static_cast<usize>(format_count)
+  };
+
+  vkGetPhysicalDeviceSurfaceFormatsKHR(
+    physical_device, surface, &format_count, std::data(formats)
+  );
+
+  auto constexpr no_format_idx{ std::numeric_limits<u32>::max() };
+  auto const asked_format{ convert_format(info.image_format) };
+
+  u32 chosen_format_idx{ no_format_idx };
+  for (u32 i{}; i < format_count; ++i) {
+    if (formats[i].format == asked_format) {
+      chosen_format_idx = i;
+      break;
+    }
+  }
+  if (chosen_format_idx == no_format_idx) {
+    chosen_format_idx = 0;
+    log.warn(
+      THIS_MODULE,
+      "Requested image format is not supported! "
+      "0x%Xu native format will be used",
+      static_cast<u32>(formats[chosen_format_idx].format)
+    );
+  }
+
+  auto const &surface_format{ formats[chosen_format_idx] };
+
+  VkSurfaceCapabilitiesKHR capabilities;
+  vkGetPhysicalDeviceSurfaceCapabilitiesKHR(
+    physical_device, surface, &capabilities
+  );
+
+  auto const asked_image_count{ static_cast<u32>(info.image_count) };
+  auto const img_count{ std::clamp(
+    asked_image_count, capabilities.minImageCount, capabilities.maxImageCount
+  ) };
+  if (img_count != asked_image_count) {
+    log.warn(
+      THIS_MODULE,
+      "GPU does not support %u images count. %u will be used",
+      asked_image_count,
+      img_count
+    );
+  }
+
+  VkSwapchainCreateInfoKHR const create_info{
+    .sType            = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR,
+    .pNext            = nullptr,
+    .flags            = 0,
+    .surface          = surface,
+    .minImageCount    = img_count,
+    .imageFormat      = surface_format.format,
+    .imageColorSpace  = surface_format.colorSpace,
+    .imageExtent      = convert_extent(info.resolution),
+    .imageArrayLayers = 1,
+    .imageUsage       = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
+    .imageSharingMode = VK_SHARING_MODE_EXCLUSIVE,
+    .preTransform     = capabilities.currentTransform,
+    .compositeAlpha   = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR,
+    .presentMode      = convert_present_mode(info.present),
+    .clipped          = static_cast<VkBool32>(info.clipped),
+  };
+
+  VkSwapchainKHR swapchain;
+  vkCreateSwapchainKHR(device, &create_info, alloc, &swapchain);
+
+  u32 actual_img_count;
+  vkGetSwapchainImagesKHR(device, swapchain, &actual_img_count, nullptr);
+  actual_img_count = std::min(actual_img_count, max_swapchain_elements);
+
+  std::array<VkImage, max_swapchain_elements> images;
+  vkGetSwapchainImagesKHR(
+    device, swapchain, &actual_img_count, std::data(images)
+  );
+
+
+  swapchain_elements_array elements{};
+  for (u32 i{}; i < actual_img_count; ++i) {
+    auto &element{ elements[i] };
+    element.image = images[i];
+
+    {
+      VkCommandBufferAllocateInfo const alloc_info{
+        .sType              = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
+        .commandPool        = commandPool,
+        .level              = VK_COMMAND_BUFFER_LEVEL_PRIMARY,
+        .commandBufferCount = 1,
+      };
+
+      vkAllocateCommandBuffers(device, &alloc_info, &element.cmd_buffer);
+    }
+
+    {
+      VkImageViewCreateInfo const createInfo{
+        .sType    = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
+        .pNext    = nullptr,
+        .flags    = 0,
+        .image    = elements[i].image,
+        .viewType = VK_IMAGE_VIEW_TYPE_2D,
+        .format   = create_info.imageFormat,
+        .components{
+                    .r = VK_COMPONENT_SWIZZLE_IDENTITY,
+                    .g = VK_COMPONENT_SWIZZLE_IDENTITY,
+                    .b = VK_COMPONENT_SWIZZLE_IDENTITY,
+                    .a = VK_COMPONENT_SWIZZLE_IDENTITY,
+                    },
+        .subresourceRange{
+                    .aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT,
+                    .baseMipLevel   = 0,
+                    .levelCount     = 1,
+                    .baseArrayLayer = 0,
+                    .layerCount     = 1,
+                    },
+      };
+
+      vkCreateImageView(device, &createInfo, alloc, &element.image_view);
+    }
+
+    {
+      VkFramebufferCreateInfo const createInfo{
+        .sType           = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO,
+        .renderPass      = renderPass,
+        .attachmentCount = 1,
+        .pAttachments    = &element.image_view,
+        .width           = create_info.imageExtent.width,
+        .height          = create_info.imageExtent.height,
+        .layers          = 1,
+      };
+
+      vkCreateFramebuffer(device, &createInfo, alloc, &element.framebuffer);
+    }
+
+    {
+      VkSemaphoreCreateInfo const createInfo{
+        .sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO,
+        .pNext = nullptr,
+        .flags = 0,
+      };
+
+      vkCreateSemaphore(device, &createInfo, alloc, &element.start_semaphore);
+      vkCreateSemaphore(device, &createInfo, alloc, &element.end_semaphore);
+    }
+    {
+      VkFenceCreateInfo const createInfo{
+        .sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO,
+        .flags = VK_FENCE_CREATE_SIGNALED_BIT,
+      };
+
+      vkCreateFence(device, &createInfo, alloc, &element.fence);
+    }
+  }
+
+  return vk_swapchain{
+    .handle       = swapchain,
+    .images_count = actual_img_count,
+    .format       = create_info.imageFormat,
+    .extent       = create_info.imageExtent,
+  };
+  */
+}
+
 
 } // namespace gzn::gfx::backends::ctx
+
+#endif // defined(GZN_GFX_BACKEND_VULKAN)

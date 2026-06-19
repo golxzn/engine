@@ -41,7 +41,7 @@ auto opengl::make_context_on(
 }
 
 auto opengl::setup(
-  std::span<byte>     storage,
+  fnd::span<byte>     storage,
   context_info const &info,
   surface_proxy      &surface
 ) -> bool {

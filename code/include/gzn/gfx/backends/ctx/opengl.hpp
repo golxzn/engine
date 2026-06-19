@@ -1,8 +1,6 @@
 #if defined(GZN_GFX_BACKEND_OPENGL)
 
-#  include <span>
-
-#  include "gzn/fnd/containers/pool.hpp"
+#  include "gzn/fnd/containers/span.hpp"
 #  include "gzn/fnd/util/unsafe-any-ref.hpp"
 #  include "gzn/gfx/render-capacities.hpp"
 #  include "gzn/gfx/surface.hpp"
@@ -29,7 +27,7 @@ struct opengl {
   ) -> opengl *;
 
   static auto setup(
-    std::span<byte>     storage,
+    fnd::span<byte>     storage,
     context_info const &info,
     surface_proxy      &surface
   ) -> bool;

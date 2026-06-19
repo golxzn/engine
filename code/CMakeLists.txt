@@ -1,15 +1,43 @@
 
 set(lib_target ${PROJECT_NAME})
+set(gzn_include_dir ${CMAKE_CURRENT_SOURCE_DIR}/include)
 
-file(GLOB_RECURSE gzn_header_files CONFIGURE_DEPENDS
-  ${CMAKE_CURRENT_SOURCE_DIR}/include/*.hpp
-)
+file(GLOB_RECURSE gzn_header_files CONFIGURE_DEPENDS ${gzn_include_dir}/*.hpp)
 file(GLOB_RECURSE gzn_source_files CONFIGURE_DEPENDS
   ${CMAKE_CURRENT_SOURCE_DIR}/sources/*.cpp
 )
 
 add_library(${lib_target} ${gzn_header_files} ${gzn_source_files})
 add_library(gzn::engine ALIAS ${lib_target})
+
+target_precompile_headers(${lib_target}
+  PUBLIC
+    <algorithm>
+    <array>
+    <atomic>
+    <bit>
+    <concepts>
+    <cstdarg>
+    <cstddef>
+    <cstdint>
+    <cstring>
+    <expected>
+    <limits>
+    <string_view>
+    <tuple>
+    <type_traits>
+    <typeinfo>
+    <utility>
+
+  PRIVATE
+    "${gzn_include_dir}/gzn/fnd/assert.hpp"
+    "${gzn_include_dir}/gzn/fnd/bits.hpp"
+    "${gzn_include_dir}/gzn/fnd/clamped.hpp"
+    "${gzn_include_dir}/gzn/fnd/definitions.hpp"
+    "${gzn_include_dir}/gzn/fnd/hash.hpp"
+    "${gzn_include_dir}/gzn/fnd/types.hpp"
+    "${gzn_include_dir}/gzn/fnd/utility.hpp"
+)
 
 if (MSVC)
   target_compile_definitions(${lib_target} PRIVATE _HAS_EXCEPTIONS=0)

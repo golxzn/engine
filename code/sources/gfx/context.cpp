@@ -9,7 +9,9 @@ namespace gzn::gfx {
 
 namespace {
 
-auto default_select_gpu(std::span<gpu_info const> const devices) -> usize {
+inline constexpr cstr CTX_MODULE{ "gfx::ctx::context" };
+
+auto default_select_gpu(fnd::span<gpu_info const> const devices) -> usize {
   if (std::empty(devices)) { return 0; }
 
   struct selection {
@@ -39,26 +41,6 @@ void load_backends() {
   ctx::opengl::load();
 #else
   ctx::GZN_GFX_BACKEND::load()
-#endif // defined(GZN_GFX_BACKEND_ANY)
-}
-
-auto select_available(backend_type const preferred)
-  -> std::optional<backend_type> {
-#if defined(GZN_GFX_BACKEND_ANY)
-
-  if (preferred != backend_type::any && context::is_available(preferred)) {
-    return preferred;
-  }
-
-  for (auto const type : backend_types) {
-    if (context::is_available(type)) { return type; }
-  }
-  return std::nullopt;
-
-#else
-
-  return ctx::GZN_GFX_BACKEND::is_available() ? preferred : std::nullopt;
-
 #endif // defined(GZN_GFX_BACKEND_ANY)
 }
 
@@ -97,9 +79,9 @@ auto build_context(
 }
 
 auto setup_context(
-  std::span<std::byte> storage,
-  context_info const  &info,
-  surface_proxy       &surface
+  fnd::span<byte>     storage,
+  context_info const &info,
+  surface_proxy      &surface
 ) -> bool {
   using namespace backends;
 
@@ -141,10 +123,6 @@ auto destroy_context(backend_type const type) {
 
 context::context(members mem) noexcept
   : m{ std::move(mem) } {}
-
-context::~context() {
-  if (m.surface.valid()) { m.surface.destroy(data()); }
-}
 
 context::context(context &&other) noexcept
   : m{ std::move(other.m) } {}
@@ -193,48 +171,71 @@ auto context::is_available(backend_type type) -> bool {
   return false;
 }
 
-void context::present() { m.surface.present(data()); }
+auto context::select_available(backend_type const preferred)
+  -> fnd::opt<backend_type> {
+#if defined(GZN_GFX_BACKEND_ANY)
+
+  if (preferred != backend_type::any && context::is_available(preferred)) {
+    return preferred;
+  }
+
+  for (auto const type : backend_types) {
+    if (context::is_available(type)) { return type; }
+  }
+
+#else
+
+  if (ctx::GZN_GFX_BACKEND::is_available()) { return preferred; }
+
+#endif // defined(GZN_GFX_BACKEND_ANY)
+  return std::nullopt;
+}
 
 auto context::construct(
-  std::span<byte>           storage,
+  fnd::span<byte>           storage,
   context_info              info,
   fnd::util::unsafe_any_ref api_specific
 ) -> members {
+  if (!is_available(info.backend)) {
+    info.log_func.err(CTX_MODULE, "Selected backend is not available!");
+    return {};
+  }
+  if (!info.surface.valid()) {
+    info.log_func.err(CTX_MODULE, "Invalid surface proxy was given!");
+    return {};
+  }
+
   load_backends();
 
-  auto constexpr none{ gfx::backend_type::any };
-  info.backend = select_available(info.backend).value_or(none);
-  if (info.backend == none) { return {}; }
+  if (info.swapchain.resolution == glm::u32vec2{}) {
+    info.swapchain.resolution = default_resolution;
+  }
 
   if (!info.select_gpu) {
-    fnd::dummy_allocator dummy{};
     info.select_gpu = context_info::select_gpu_func{
-      dummy,
+      fnd::g_dummy_alloc,
       &default_select_gpu,
     };
   }
 
   auto data_view{ build_context(info, api_specific) };
-  if (data_view == nullptr) { return {}; }
-
-  auto surface{ info.surface_builder() };
-
-  if (!surface.valid() || !surface.setup(data_view)) {
-    destroy_context(info.backend);
-    /// @todo maybe some log
+  if (data_view == nullptr) {
+    info.log_func.err(CTX_MODULE, "Failed to build backend context!");
     return {};
   }
 
-  if (!setup_context(storage, info, surface)) {
+
+  if (!setup_context(storage, info, info.surface)) {
     destroy_context(info.backend);
-    /// @todo maybe some log
+    info.log_func.err(CTX_MODULE, "Failed to setup backend context!");
     return {};
   }
 
   return members{
-    .surface{ std::move(surface) },
-    .backend  = info.backend,
-    .data_ref = data_view,
+    .surface{ std::move(info.surface) },
+    .log_func{ info.log_func },
+    .data_ref{ data_view },
+    .backend = info.backend,
   };
 }
 

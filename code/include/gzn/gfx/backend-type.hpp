@@ -13,7 +13,7 @@ enum class backend_type {
   opengl,
 };
 
-inline constexpr std::array backend_types{
+std::array inline constexpr backend_types{
   backend_type::metal,
   backend_type::vulkan,
   backend_type::opengl,

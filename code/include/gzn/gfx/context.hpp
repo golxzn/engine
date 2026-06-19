@@ -1,24 +1,27 @@
 #pragma once
 
-#include <span>
-
 #include <glm/vec2.hpp>
 
+#include "gzn/fnd/containers/span.hpp"
 #include "gzn/fnd/log-func.hpp"
+#include "gzn/fnd/optional.hpp"
 #include "gzn/fnd/owner.hpp"
 #include "gzn/fnd/util/unsafe-any-ref.hpp"
 #include "gzn/fnd/version.hpp"
 #include "gzn/gfx/backend-type.hpp"
 #include "gzn/gfx/render-capacities.hpp"
 #include "gzn/gfx/surface.hpp"
+#include "gzn/gfx/swap-chain.hpp"
 
 namespace gzn::gfx {
+
+using backend_handle = void *;
 
 struct gpu_info;
 
 struct context_info {
   using select_gpu_func =
-    fnd::move_only_func<auto(std::span<gpu_info const>)->usize>;
+    fnd::move_only_func<auto(fnd::span<gpu_info const>)->usize>;
 
   backend_type backend{ backend_type::any };
 
@@ -29,10 +32,11 @@ struct context_info {
 
   fnd::log_func log_func{};
 
-  surface_builder_func    surface_builder{};
-  std::span<cstr const>   extensions{};
+  surface_proxy           surface{};
+  fnd::span<cstr const>   extensions{};
   mutable select_gpu_func select_gpu{};
   render_capacities       capacities{};
+  swapchain_info          swapchain{};
 };
 
 class context {
@@ -42,15 +46,14 @@ class context {
 
   struct members {
     surface_proxy             surface{};
-    backend_type              backend{};
+    fnd::log_func             log_func{};
     fnd::util::unsafe_any_ref data_ref{};
+    backend_type              backend{};
   } m;
 
   explicit context(members info) noexcept;
 
 public:
-  ~context();
-
   context(context const &other) = delete;
   context(context &&other) noexcept;
 
@@ -67,6 +70,11 @@ public:
   static auto is_available(backend_type type) -> bool;
 
   [[nodiscard]]
+  static auto select_available(
+    backend_type const preffered = backend_type::any
+  ) -> fnd::opt<backend_type>;
+
+  [[nodiscard]]
   static auto make(
     fnd::util::allocator_type auto &alloc,
     context_info                    info,
@@ -75,8 +83,8 @@ public:
     auto const required_space{
       calculate_required_space_for(info.backend, info.capacities)
     };
-    if (auto place{ alloc.allocate(required_space, 0u) }; place) {
-      std::span<byte> storage{ static_cast<byte *>(place), required_space };
+    if (auto place{ alloc.allocate({ required_space }) }; place) {
+      fnd::span<byte> storage{ place.as_bytes(), place.size.bytes_count };
       return context{ construct(storage, std::move(info), api_specific) };
     }
     return context{ {} };
@@ -94,11 +102,13 @@ public:
     return &self.m.surface;
   }
 
-private:
-  void present();
+  [[nodiscard]] gzn_inline auto get_logger() noexcept -> fnd::log_func & {
+    return m.log_func;
+  }
 
+private:
   static auto construct(
-    std::span<byte>           storage,
+    fnd::span<byte>           storage,
     context_info              info,
     fnd::util::unsafe_any_ref api_specific
   ) -> members;

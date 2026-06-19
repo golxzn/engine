@@ -1,13 +1,13 @@
 #pragma once
 
 #include <limits>
-#include <span>
 #include <string_view>
 
 #include <glm/vec2.hpp>
 
 #include "gzn/app/event.hpp"
 #include "gzn/fnd/allocators.hpp"
+#include "gzn/fnd/containers/span.hpp"
 #include "gzn/gfx/backend-type.hpp"
 #include "gzn/gfx/surface.hpp"
 
@@ -78,22 +78,8 @@ public:
   auto take_next_event(event &ev) -> bool;
 
   [[nodiscard]]
-  auto make_surface_proxy(gfx::backend_type const backend) const
-    -> gfx::surface_proxy {
-    return view::make_surface_proxy(id, backend);
-  }
-
-  [[nodiscard]]
-  auto get_surface_builder(
-    fnd::util::allocator_type auto &alloc,
-    gfx::backend_type               backend
-  ) const {
-    return gfx::surface_builder_func{
-      alloc,
-      [i{ id }, backend] -> gfx::surface_proxy {
-        return view::make_surface_proxy(i, backend);
-      }
-    };
+  gzn_inline auto make_surface_proxy() const -> gfx::surface_proxy {
+    return view::make_surface_proxy(id);
   }
 
   [[nodiscard]]
@@ -103,13 +89,12 @@ public:
   auto get_native_handle() const noexcept -> native_view_handle;
 
   [[nodiscard]]
-  static auto get_required_extensions() -> std::span<cstr const>;
+  static auto get_required_extensions() -> fnd::span<cstr const>;
 
 private:
   backend_id id{ invalid_backend_id };
 
-  static auto make_surface_proxy(backend_id id, gfx::backend_type type)
-    -> gfx::surface_proxy;
+  static auto make_surface_proxy(backend_id id) -> gfx::surface_proxy;
 };
 
 } // namespace gzn::app

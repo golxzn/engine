@@ -1,16 +1,20 @@
+#pragma once
+
 #if defined(GZN_GFX_BACKEND_VULKAN)
 
-#  include <span>
+#  include <array>
 #  include <tuple>
 
 #  include <glad/vulkan.h>
 #  include <vulkan/vulkan.h>
 
 #  include "gzn/fnd/containers/pool.hpp"
+#  include "gzn/fnd/containers/span.hpp"
 #  include "gzn/fnd/log-func.hpp"
 #  include "gzn/fnd/util/unsafe-any-ref.hpp"
 #  include "gzn/gfx/render-capacities.hpp"
 #  include "gzn/gfx/surface.hpp"
+#  include "gzn/gfx/swap-chain.hpp"
 
 namespace gzn::gfx {
 struct context_info;
@@ -21,6 +25,29 @@ namespace gzn::gfx::backends::ctx {
 struct vk_memory {
   VkDeviceMemory handle{ VK_NULL_HANDLE };
   VkDevice       device{ VK_NULL_HANDLE };
+};
+
+struct vk_swapchain_element {
+  VkCommandBuffer cmd_buffer{ VK_NULL_HANDLE };
+  VkImage         image{ VK_NULL_HANDLE };
+  VkImageView     image_view{ VK_NULL_HANDLE };
+  VkFramebuffer   framebuffer{ VK_NULL_HANDLE };
+  VkSemaphore     start_semaphore{ VK_NULL_HANDLE };
+  VkSemaphore     end_semaphore{ VK_NULL_HANDLE };
+  VkFence         fence{ VK_NULL_HANDLE };
+  VkFence         last_fence{ VK_NULL_HANDLE };
+};
+
+inline constexpr u32 max_swapchain_elements{ 8 };
+using swapchain_elements_array =
+  std::array<vk_swapchain_element, max_swapchain_elements>;
+
+struct vk_swapchain {
+  VkSwapchainKHR           handle{ VK_NULL_HANDLE };
+  u32                      images_count{};
+  VkFormat                 format{};
+  VkExtent2D               extent{};
+  swapchain_elements_array images{};
 };
 
 struct vk_pipeline {
@@ -52,10 +79,10 @@ struct vulkan {
   VkQueue          queue{ VK_NULL_HANDLE };
   VkCommandPool    command_pool{ VK_NULL_HANDLE };
 
-  std::span<byte>                   storage{};
-  fnd::non_owning_pool<vk_pipeline> pipelines;
-  fnd::non_owning_pool<vk_buffer>   buffers;
-  fnd::non_owning_pool<vk_sampler>  samplers;
+  fnd::span<byte>        storage{};
+  fnd::pool<vk_pipeline> pipelines;
+  fnd::pool<vk_buffer>   buffers;
+  fnd::pool<vk_sampler>  samplers;
 
   static void load();
   static void unload();
@@ -71,7 +98,7 @@ struct vulkan {
   ) -> vulkan *;
 
   static auto setup(
-    std::span<byte>     storage,
+    fnd::span<byte>     storage,
     context_info const &info,
     surface_proxy      &surface
   ) -> bool;
@@ -113,6 +140,15 @@ private:
     u32                    family_index,
     VkDevice               logical_device
   ) -> VkCommandPool;
+
+  static auto create_swapchain(
+    VkAllocationCallbacks *alloc,
+    fnd::log_func         &log,
+    swapchain_info const  &info,
+    VkSurfaceKHR           surface,
+    VkPhysicalDevice       physical_device,
+    VkDevice               logical_device
+  ) -> vk_swapchain;
 };
 
 } // namespace gzn::gfx::backends::ctx
