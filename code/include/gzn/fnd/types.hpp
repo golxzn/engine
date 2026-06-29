@@ -28,7 +28,7 @@ using usize = u64;
 using ssize = s64;
 
 template<class T, usize Length>
-using c_array = T[Length];
+using carr = T[Length];
 
 [[nodiscard]]
 consteval auto operator""_B(long double count) noexcept -> usize {

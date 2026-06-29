@@ -9,7 +9,7 @@
 
 namespace gzn::fnd {
 
-inline constexpr usize MAX_HEAPS_PER_THREAD{ 32 };
+inline constexpr usize MAX_HEAPS_PER_THREAD{ 512 };
 using heap_idx = usize;
 
 class heap_allocator {

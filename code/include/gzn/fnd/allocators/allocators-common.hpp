@@ -5,6 +5,7 @@
 #include <source_location>
 
 #include "gzn/fnd/assert.hpp"
+#include "gzn/fnd/pointers.hpp"
 
 namespace gzn::fnd {
 
@@ -158,18 +159,12 @@ constexpr auto size_of(auto const &obj, usize const count = 1u)
   return size_of<obj_type>(count);
 }
 
+template<class T>
 [[nodiscard]]
-constexpr auto block_of(auto *ptr, usize const count = 1u) {
-  if (ptr) {
-    return memory_block{
-      .address = static_cast<void *>(ptr),
-      .size    = size_of(ptr, count),
-    };
-  }
-
-  using obj_type = std::remove_pointer_t<std::remove_cvref_t<decltype(ptr)>>;
+constexpr auto block_of(not_null<T> ptr, usize const count = 1u) {
   return memory_block{
-    .size = size_of<obj_type>(count),
+    .address = static_cast<void *>(ptr),
+    .size    = size_of(ptr, count),
   };
 }
 
@@ -220,11 +215,11 @@ template<class T>
   util::allocator_type auto &allocator
 ) {
   return [alloc{ &allocator }](T *ptr) {
-    auto ptr_block{ block_of(ptr) };
+    if (ptr == nullptr) { return; }
+    auto ptr_block{ block_of<T>(not_null<T>{ ptr }) };
     alloc->deallocate(ptr_block);
   };
 }
-
 
 } // namespace util
 

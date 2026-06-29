@@ -41,7 +41,7 @@ struct functor_storage final {
   union {
     functor_storage_alignment alignment;
     void                     *ptr;
-    c_array<byte, BytesCount> sbo;
+    carr<byte, BytesCount> sbo;
   };
 };
 

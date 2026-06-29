@@ -60,7 +60,11 @@ struct not_null final {
     return static_cast<Ptr>(ptr);
   }
 
-  [[nodiscard]] constexpr auto operator*(this auto &&self) noexcept {
+  [[nodiscard]] constexpr auto &operator[](this auto &&self, usize const idx) {
+    return self.ptr[idx];
+  }
+
+  [[nodiscard]] constexpr auto &operator*(this auto &&self) noexcept {
     return *self.ptr;
   }
 
@@ -69,7 +73,7 @@ struct not_null final {
   }
 
   template<class Member>
-  [[nodiscard]] constexpr auto operator->*(
+  [[nodiscard]] constexpr auto &operator->*(
     this auto &&self,
     Member      member
   ) noexcept {
@@ -83,6 +87,9 @@ template<class T>
 using not_null = std::add_pointer_t<T>;
 
 #endif // defined(GZN_DEBUG)
+
+template<class T>
+not_null(T *ptr) -> not_null<T>;
 
 /*
 

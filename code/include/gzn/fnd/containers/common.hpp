@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstring>
+#include <type_traits>
 
 #include "gzn/fnd/allocators/allocators-common.hpp"
 #include "gzn/fnd/utility.hpp"
@@ -9,45 +10,50 @@ namespace gzn::fnd::containers {
 
 namespace mem {
 
-template<class T>
-using pure_pointer_t = std::add_pointer_t<std::remove_all_extents_t<T>>;
-
-template<class T, class Ptr = pure_pointer_t<T>>
+template<class T, class Ptr = std::add_pointer_t<T>>
 [[nodiscard]] auto allocate(
   util::allocator_type auto &alloc,
   usize const                count,
   std::source_location const loc = std::source_location::current()
 ) -> Ptr {
   if (count == 0) { return nullptr; }
-
-  return alloc.allocate({ count * sizeof(T), alignof(T) }, loc)
-    .template as<T>();
+  return alloc.allocate(util::size_of<T>(count), loc).template as<T>();
 }
 
-/*
-template<class T, class Ptr = pure_pointer_t<T>>
+template<class T, class Ptr = std::add_pointer_t<T>>
 [[nodiscard]] auto grow(
   util::allocator_type auto &alloc,
-  Ptr                        object,
+  T                        *&object,
   usize const                count,
-  usize const                additional_count,
+  usize const                old_capacity,
+  usize const                new_capacity,
   std::source_location const loc = std::source_location::current()
 ) -> bool {
-  if constexpr (std::is_trivially_copyable_v<T>) {
-    memory_block block{
-      .data = object,
-      .size{ .bytes_count = sizeof(T) * count, .alignment = alignof(T) },
-    };
-    return alloc.expand(block, sizeof(T) * additional_count, loc);
-  } else {
-  }
-}
-*/
+  gzn_assertion(nullptr == object, "Grow had called on null object!");
+  auto block{ util::block_of(not_null{ object }, old_capacity) };
 
-template<class T, class Ptr = pure_pointer_t<T>>
+  if constexpr (!std::is_trivially_copyable_v<T>) {
+    auto new_block{ alloc.allocate(util::size_of<T>(new_capacity), loc) };
+    if (!new_block) [[unlikely]] { return false; }
+
+    auto new_object{ new_block.template as<T>() };
+    std::move(object, object + count, new_object);
+    object = new_object;
+
+    alloc.deallocate(block);
+  } else {
+    if (!alloc.expand(block, sizeof(T) * new_capacity, loc)) [[likely]] {
+      return false;
+    }
+    object = block.template as<T>();
+  }
+  return true;
+}
+
+template<class T, class Ptr = std::add_pointer_t<T>>
 void deallocate(
   util::allocator_type auto &alloc,
-  Ptr                        object,
+  T                         *object,
   usize const                count,
   std::source_location const loc = std::source_location::current()
 ) {
@@ -60,12 +66,12 @@ void deallocate(
   alloc.deallocate(block, loc);
 }
 
-template<class T, class Ptr = pure_pointer_t<T>>
+template<class T, class Ptr = std::add_pointer_t<T>>
 [[nodiscard]] auto allocate_move(
   util::allocator_type auto &alloc,
-  Ptr                        from,
-  Ptr                        to,
-  u32 const                  count
+  T const                   *from,
+  T const                   *to,
+  usize const                count
 ) -> Ptr {
   if (auto raw{ allocate<T, Ptr>(alloc, count) }; raw) {
     if constexpr (std::is_trivially_copyable_v<T>) {
@@ -78,19 +84,19 @@ template<class T, class Ptr = pure_pointer_t<T>>
   return nullptr;
 }
 
-template<class T, class Ptr = pure_pointer_t<T>>
+template<class T, class Ptr = std::add_pointer_t<T>>
 [[nodiscard]]
-auto allocate_move(util::allocator_type auto &alloc, Ptr from, Ptr to) -> Ptr {
+auto allocate_move(util::allocator_type auto &alloc, T *from, T *to) -> Ptr {
   return allocate_move<T, Ptr>(alloc, from, to, std::distance(from, to));
 }
 
-template<class T, class Ptr = pure_pointer_t<T>>
+template<class T, class Ptr = std::add_pointer_t<T>>
 [[nodiscard]]
 auto allocate_copy(
   util::allocator_type auto &alloc,
   util::iterator_type auto   from,
   util::iterator_type auto   to,
-  u32 const                  count
+  usize const                count
 ) -> Ptr {
   if (auto raw{ allocate<T, Ptr>(alloc, count) }; raw) {
     if constexpr (std::is_trivially_copyable_v<T>) {
@@ -103,9 +109,9 @@ auto allocate_copy(
   return nullptr;
 }
 
-template<class T, class Ptr = pure_pointer_t<T>>
+template<class T, class Ptr = std::add_pointer_t<T>>
 [[nodiscard]]
-auto allocate_copy(util::allocator_type auto &alloc, Ptr from, Ptr to) -> Ptr {
+auto allocate_copy(util::allocator_type auto &alloc, T *from, T *to) -> Ptr {
   return allocate_copy<T, Ptr>(alloc, from, to, std::distance(from, to));
 }
 
@@ -136,7 +142,7 @@ constexpr auto swap_erase(
 constexpr auto shift(
   util::range_type auto   &range,
   util::iterator_type auto target,
-  u32                      shift = 1
+  usize                    shift = 1
 ) {
   gzn_assertion(
     target < std::begin(range) || target >= std::end(range),

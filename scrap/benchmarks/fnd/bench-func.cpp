@@ -5,9 +5,9 @@
 #include <nanobench.h>
 
 struct payload {
-  gzn::c_array<gzn::u64, 25> u64arr100{};
-  gzn::u8                    unaligned{ 10 };
-  gzn::u32                   uninitialized;
+  gzn::carr<gzn::u64, 25> u64arr100{};
+  gzn::u8                 unaligned{ 10 };
+  gzn::u32                uninitialized;
 };
 
 template<class T>
@@ -51,7 +51,7 @@ int main() {
     return std::function<int(int)>{ [](int x) { return x; } };
   });
 
-  bench.minEpochIterations(15'000);
+  bench.minEpochIterations(15000);
   func_test<payload> heavy_dude{ payload{} };
   bench.run("[gzn] huge lambda creation", [heavy_dude] {
     return fnd::move_only_func<int(int)>{ alloc,
@@ -64,7 +64,7 @@ int main() {
 
 
   bench.title("function calling");
-  bench.minEpochIterations(3256306);
+  bench.minEpochIterations(3'256'306);
   bench.run(
     "[gzn] lambda | no capture",
     [param,

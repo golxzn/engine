@@ -35,7 +35,7 @@ public:
   template<usize Len>
     requires(Len > 1)
   constexpr explicit basic_name_view(
-    c_array<value_type const, Len> &&arr
+    carr<value_type const, Len> &&arr
   ) noexcept
     : m{ bake<Len - 1>(arr) } {}
 
@@ -120,7 +120,7 @@ public:
 
   template<usize Len>
     requires(Len > 0)
-  constexpr explicit basic_name(c_array<value_type const, Len> &&arr) noexcept
+  constexpr explicit basic_name(carr<value_type const, Len> &&arr) noexcept
     : m{ bake<Len - 1>(arr) } {}
 
   constexpr explicit basic_name(pointer_const cstr) noexcept

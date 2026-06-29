@@ -26,7 +26,7 @@ public:
     , array{ ptr } {}
 
   template<size_type N>
-  constexpr explicit span(c_array<value_type, N> &&arr) noexcept
+  constexpr explicit span(carr<value_type, N> &&arr) noexcept
     : span{ arr, N } {}
 
   template<size_type N>

@@ -27,7 +27,7 @@ public:
     , m_size{ size } {}
 
   template<class T, usize Length>
-  constexpr explicit raw_data(c_array<T const, Length> &&array) noexcept
+  constexpr explicit raw_data(carr<T const, Length> &&array) noexcept
     : m_data{ reinterpret_cast<byte const *>(array) }
     , m_stride{ sizeof(T) }
     , m_size{ Length * m_stride } {}

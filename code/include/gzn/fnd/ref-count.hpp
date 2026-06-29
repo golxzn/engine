@@ -70,7 +70,7 @@ struct ref_counter_atomic {
 
 template<class T>
 struct ref_counted_storage {
-  using destructor_type = copyable_func<void(ref_counted_storage *)>;
+  using destructor_type = copyable_func<void(not_null<ref_counted_storage>)>;
   using value_type      = T;
 
   value_type              value;
@@ -94,7 +94,9 @@ struct ref_counted_storage {
   void acquire() noexcept { counter.acquire(); }
 
   void release() {
-    if (counter.release() == 0) { destructor(this); }
+    if (counter.release() == 0) {
+      destructor(not_null<ref_counted_storage>{ this });
+    }
   }
 };
 

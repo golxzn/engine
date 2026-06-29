@@ -76,17 +76,17 @@ concept range_type = class_range_type<T> ||
 constexpr auto data(class_range_type auto &&r) { return r.data(); }
 
 template<class T, std::size_t size>
-constexpr auto data(c_array<T, size> const &a) -> T const * {
+constexpr auto data(carr<T, size> const &a) -> T const * {
   return a;
 }
 
 template<class T, std::size_t size>
-constexpr auto data(c_array<T, size> &a) -> T * {
+constexpr auto data(carr<T, size> &a) -> T * {
   return a;
 }
 
 template<class T, std::size_t size>
-constexpr auto data(c_array<T, size> &&a) -> T * {
+constexpr auto data(carr<T, size> &&a) -> T * {
   return a;
 }
 

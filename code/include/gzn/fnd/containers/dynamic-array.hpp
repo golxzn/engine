@@ -27,6 +27,8 @@ template<
   util::allocator_type Allocator = heap_allocator,
   class Twicks                   = dynamic_array_twicks<T>>
 class dynamic_array {
+  static constexpr bool T_is_trivial{ std::is_trivially_destructible_v<T> };
+
   gzn_static_assert(
     Twicks::grow_factor >= constants::minimum_grow_factor,
     "Grow factor should be more or equal to minimum_grow_factor{ 1 }"
@@ -83,17 +85,14 @@ public:
       ) } {}
 
   template<size_type Length>
-  explicit dynamic_array(
-    allocator_type      &allocator,
-    c_array<T, Length> &&values
-  )
+  explicit dynamic_array(allocator_type &allocator, carr<T, Length> &&values)
     : m_allocator{ &allocator }
     , m_capacity{ Length }
     , m_size{ m_capacity }
     , m_data{ containers::mem::allocate_move<value_type>(
         allocator,
         values,
-        values + m_capacity,
+        values + Length,
         m_capacity
       ) } {}
 
@@ -202,13 +201,12 @@ public:
   }
 
   void pop_back() noexcept(std::is_nothrow_destructible_v<value_type>) {
-    gzn_assertion(m_size == 0, "pop_back called with empty array");
-    if (m_size != 0) {
-      --m_size;
-      if constexpr (!std::is_trivially_destructible_v<value_type>) {
-        m_data[m_size].~value_type();
-      }
+    if (m_size == 0) [[unlikely]] {
+      gzn_do_assertion("pop_back called with empty array");
+      return;
     }
+    --m_size;
+    if constexpr (!T_is_trivial) { m_data[m_size].~value_type(); }
   }
 
   void fast_erase(iterator pos) {
@@ -228,9 +226,7 @@ public:
     auto const last{ end() };
     auto       cur{ pos };
     for (; cur + 1 != last; ++cur) { std::iter_swap(cur, cur + 1); }
-    if constexpr (!std::is_trivially_destructible_v<value_type>) {
-      cur->~value_type();
-    }
+    if constexpr (!T_is_trivial) { cur->~value_type(); }
     --m_size;
     return pos;
   }
@@ -238,7 +234,7 @@ public:
   void clear() {
     if (m_capacity == 0) { return; }
 
-    if constexpr (!std::is_trivially_destructible_v<value_type>) {
+    if constexpr (!T_is_trivial) {
       auto const last{ end() };
       for (auto cur{ begin() }; cur != last; ++cur) { cur->~value_type(); }
     }
@@ -249,7 +245,7 @@ public:
   void reset() {
     if (m_capacity == 0) { return; }
 
-    if constexpr (!std::is_trivially_destructible_v<value_type>) {
+    if constexpr (!T_is_trivial) {
       auto const last{ end() };
       for (auto cur{ begin() }; cur != last; ++cur) { cur->~value_type(); }
     }
@@ -262,16 +258,21 @@ public:
   void reserve(size_type const count) {
     if (m_capacity >= count) [[unlikely]] { return; }
 
-    if (m_data) [[unlikely]] {
-      auto new_values{ containers::mem::allocate_move<value_type>(
-        *m_allocator, begin(), end(), count
-      ) };
-      containers::mem::deallocate<value_type>(*m_allocator, m_data, m_capacity);
-      m_data = new_values;
-    } else {
+    auto const old_cap{ std::exchange(m_capacity, count) };
+    if (!m_data) [[unlikely]] {
       m_data = containers::mem::allocate<value_type>(*m_allocator, count);
+      return;
     }
-    m_capacity = count;
+
+    if (containers::mem::grow(*m_allocator, m_data, m_size, old_cap, count)) {
+      return;
+    }
+
+    auto place{ containers::mem::allocate_move<value_type>(
+      *m_allocator, m_data, m_data + m_size, count
+    ) };
+    containers::mem::deallocate<value_type>(*m_allocator, m_data, old_cap);
+    m_data = place;
   }
 
   void resize(size_t const count, value_type default_value = {}) {
@@ -284,7 +285,7 @@ public:
       auto       cur{ m_data + old_size };
       for (; cur != last; ++cur) { new (cur) value_type{ default_value }; }
       new (cur) value_type{ std::move(default_value) };
-    } else if constexpr (!std::is_trivially_destructible_v<value_type>) {
+    } else if constexpr (!T_is_trivial) {
       auto const last{ end() };
       for (auto cur{ m_data + count }; cur != last; ++cur) {
         cur->~value_type();
@@ -373,7 +374,7 @@ private:
   size_type         m_size{};
   pointer           m_data{ nullptr };
 
-  void grow() { reserve(get_grown_capacity(m_capacity)); }
+  gzn_inline void grow() { reserve(get_grown_capacity(m_capacity)); }
 };
 
 } // namespace gzn::fnd
